@@ -16,11 +16,12 @@ import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
 
 import { TableNoData } from '../table-no-data';
-import { UserTableRow } from '../user-table-row';
-import { UserTableHead } from '../user-table-head';
 import { TableEmptyRows } from '../table-empty-rows';
+import UserAddForm from '../user-add-form';
+import { UserTableHead } from '../user-table-head';
+import { UserTableRow } from '../user-table-row';
 import { UserTableToolbar } from '../user-table-toolbar';
-import { emptyRows, applyFilter, getComparator } from '../utils';
+import { applyFilter, emptyRows, getComparator } from '../utils';
 
 import type { UserProps } from '../user-table-row';
 
@@ -28,7 +29,7 @@ import type { UserProps } from '../user-table-row';
 
 export function UserView() {
   const table = useTable();
-
+  const [openAddForm, setOpenAddForm] = useState(false);
   const [filterName, setFilterName] = useState('');
 
   const dataFiltered: UserProps[] = applyFilter({
@@ -39,7 +40,24 @@ export function UserView() {
 
   const notFound = !dataFiltered.length && !!filterName;
 
+  const handleOpenAddForm = () => {
+    setOpenAddForm(true);
+  };
+
+  const handleCloseAddForm = () => {
+    setOpenAddForm(false);
+  };
+
+  const handleAddUser = (data: { name: string; email: string }) => {
+    // Here you would typically make an API call to add the user
+    // For now, we'll just log it
+    console.log('Adding new user:', data);
+    // After successful API call, you might want to refresh the users list
+    // and close the form
+  };
+
   return (
+    <>
     <DashboardContent>
       <Box
         sx={{
@@ -55,6 +73,7 @@ export function UserView() {
           variant="contained"
           color="inherit"
           startIcon={<Iconify icon="mingcute:add-line" />}
+          onClick={handleOpenAddForm}
         >
           New user
         </Button>
@@ -131,6 +150,12 @@ export function UserView() {
         />
       </Card>
     </DashboardContent>
+    <UserAddForm
+      open={openAddForm}
+      onClose={handleCloseAddForm}
+      onSubmit={handleAddUser}
+    />
+    </>
   );
 }
 

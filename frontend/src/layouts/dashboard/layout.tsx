@@ -79,9 +79,6 @@ export function DashboardLayout({
           {/** @slot Searchbar */}
           <Searchbar />
 
-          {/** @slot Language popover */}
-          <LanguagePopover data={_langs} />
-
           {/** @slot Notifications popover */}
           <NotificationsPopover data={_notifications} />
 

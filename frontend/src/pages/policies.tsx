@@ -1,6 +1,6 @@
 import { CONFIG } from 'src/config-global';
+import { PoliciesView } from 'src/sections/policies/view';
 
-import { ProductsView } from 'src/sections/product/view';
 
 // ----------------------------------------------------------------------
 
@@ -9,7 +9,7 @@ export default function Page() {
     <>
       <title>{`Products - ${CONFIG.appName}`}</title>
 
-      <ProductsView />
+      <PoliciesView />
     </>
   );
 }
