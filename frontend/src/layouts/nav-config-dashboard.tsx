@@ -34,14 +34,24 @@ export const navData = [
     ),
   },
   {
-    title: 'Sign in',
-    path: '/auth/sign-in',
-    icon: icon('ic-lock'),
+    title: 'Commissions',
+    path: '/commissions',
+    icon: icon('ic-cash'),
   },
   {
-    title: 'Sign up',
-    path: '/auth/sign-up',
-    icon: icon('ic-lock'),
+    title: 'Rewards',
+    path: '/rewards',
+    icon: icon('ic-crown'), 
+  },
+  {
+    title: 'Contest',
+    path: '/contest',
+    icon: icon('ic-trophy'),
+  },
+  {
+    title: 'Additional',
+    path: '/additional',
+    icon: icon('ic-additional'),
   },
   {
     title: 'Not found',
