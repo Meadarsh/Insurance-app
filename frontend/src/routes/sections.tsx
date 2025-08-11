@@ -21,6 +21,7 @@ export const SignUpPage = lazy(() => import('src/pages/sign-up'));
 export const ProductsPage = lazy(() => import('src/pages/policies'));
 export const RewardsPage = lazy(() => import('src/pages/rewards'));
 export const CommissionPage = lazy(() => import('src/pages/commission'));
+export const ContestPage = lazy(() => import('src/pages/contest'));
 export const Page404 = lazy(() => import('src/pages/page-not-found'));
 
 const renderFallback = () => (
@@ -58,6 +59,7 @@ export const routesSection: RouteObject[] = [
       { path: 'policies', element: <PoliciesPage /> },
       { path: 'rewards', element: <RewardsPage /> },
       { path: 'commissions', element: <CommissionPage /> },
+      { path: 'contest', element: <ContestPage /> },
       { path: 'blog', element: <BlogPage /> },
     ],
   },

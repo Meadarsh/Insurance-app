@@ -2,7 +2,7 @@
 * Fonts: app
 *************************************** */
 @import '@fontsource-variable/dm-sans';
-
+@import "tailwindcss";
 @import '@fontsource/barlow/400.css';
 @import '@fontsource/barlow/500.css';
 @import '@fontsource/barlow/600.css';
