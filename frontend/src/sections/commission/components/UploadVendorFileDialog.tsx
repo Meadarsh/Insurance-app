@@ -1,23 +1,26 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
+import type {
+  SelectChangeEvent} from '@mui/material';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
   Box,
-  Typography,
   Paper,
-  CircularProgress,
-  FormControl,
-  InputLabel,
+  Alert,
+  Dialog,
+  Button,
   Select,
   MenuItem,
-  SelectChangeEvent,
   TextField,
+  Typography,
+  InputLabel,
   IconButton,
+  DialogTitle,
+  FormControl,
+  DialogContent,
+  DialogActions,
+  CircularProgress,
 } from '@mui/material';
-import { CloudUpload, Description, X } from '@mui/icons-material';
+import { X, CloudUpload, Description } from '@mui/icons-material';
+import { vendorAPI } from 'src/services/api';
 
 
 interface UploadVendorFileDialogProps {
@@ -53,6 +56,8 @@ export default function UploadVendorFileDialog({
   const [dragActive, setDragActive] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -87,38 +92,74 @@ export default function UploadVendorFileDialog({
     setDragActive(false);
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      setUploadedFile(e.dataTransfer.files[0]);
+      const file = e.dataTransfer.files[0];
+      if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
+        setUploadedFile(file);
+        setError(null);
+        setSuccess(null);
+      } else {
+        setError('Please select a valid CSV file');
+        setUploadedFile(null);
+      }
     }
   }, []);
 
   const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setUploadedFile(e.target.files[0]);
+      const file = e.target.files[0];
+      if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
+        setUploadedFile(file);
+        setError(null);
+        setSuccess(null);
+      } else {
+        setError('Please select a valid CSV file');
+        setUploadedFile(null);
+      }
     }
   }, []);
 
   const handleVendorChange = (event: SelectChangeEvent) => {
     setSelectedVendor(event.target.value);
+    setError(null);
+    setSuccess(null);
   };
 
   const handleMonthChange = (date: Date | null) => {
     setSelectedMonth(date);
+    setError(null);
+    setSuccess(null);
   };
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (uploadedFile && selectedVendor && selectedMonth) {
       setIsUploading(true);
-      console.log('Uploading vendor file:', uploadedFile.name, 'Vendor:', selectedVendor, 'Month:', selectedMonth);
-      if (onFileUploaded) {
-        onFileUploaded(uploadedFile.name, selectedVendor, selectedMonth);
-      }
-      setTimeout(() => {
-        onOpenChange(false);
-        setUploadedFile(null);
-        setSelectedVendor('');
-        setSelectedMonth(null);
+      setError(null);
+      setSuccess(null);
+      
+      try {
+        const result = await vendorAPI.uploadVendors(uploadedFile);
+        
+        setSuccess(`Successfully processed ${result.processed} vendor records!`);
+        
+        if (onFileUploaded) {
+          onFileUploaded(uploadedFile.name, selectedVendor, selectedMonth);
+        }
+        
+        // Close dialog after a delay to show success message
+        setTimeout(() => {
+          onOpenChange(false);
+          setUploadedFile(null);
+          setSelectedVendor('');
+          setSelectedMonth(null);
+          setIsUploading(false);
+          setSuccess(null);
+        }, 2000);
+        
+      } catch (uploadError) {
+        console.error('Upload failed:', uploadError);
+        setError(uploadError instanceof Error ? uploadError.message : 'Upload failed. Please try again.');
         setIsUploading(false);
-      }, 1000);
+      }
     }
   };
 
@@ -128,6 +169,8 @@ export default function UploadVendorFileDialog({
       setUploadedFile(null);
       setSelectedVendor('');
       setSelectedMonth(null);
+      setError(null);
+      setSuccess(null);
     }
   };
 
@@ -142,9 +185,30 @@ export default function UploadVendorFileDialog({
         </Box>
       </DialogTitle>
       
+      {/* Error and Success Messages */}
+      {error && (
+        <Alert 
+          severity="error" 
+          sx={{ mx: 2, mb: 2 }}
+          onClose={() => setError(null)}
+        >
+          {error}
+        </Alert>
+      )}
+      
+      {success && (
+        <Alert 
+          severity="success" 
+          sx={{ mx: 2, mb: 2 }}
+          onClose={() => setSuccess(null)}
+        >
+          {success}
+        </Alert>
+      )}
+      
       <DialogContent sx={{ pt: 2 }}>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Upload vendor file and select vendor and month for reconciliation. Supported formats: CSV, Excel, TXT
+          Upload vendor file and select vendor and month for reconciliation. Supported formats: CSV only
         </Typography>
 
         <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
@@ -262,7 +326,7 @@ export default function UploadVendorFileDialog({
           <input
             id="vendor-file-input"
             type="file"
-            accept=".csv,.xlsx,.xls,.txt"
+            accept=".csv"
             onChange={handleFileInput}
             style={{ display: 'none' }}
           />

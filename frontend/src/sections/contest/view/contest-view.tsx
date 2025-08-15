@@ -2,20 +2,18 @@ import { useState } from 'react';
 import { 
   Box, 
   Card, 
-  CardContent, 
   Grid, 
-  Typography, 
+  Chip, 
+  Stack, 
   Button,
-  Chip,
-  Stack,
   TextField,
-  InputAdornment,
-  CardMedia
+  CardMedia,
+  Typography,
+  CardContent,
+  InputAdornment
 } from '@mui/material';
-import { styled } from '@mui/material/styles';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { Iconify } from 'src/components/iconify';
-import { Scrollbar } from 'src/components/scrollbar';
 
 interface Contest {
   id: string;

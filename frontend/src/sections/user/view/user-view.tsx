@@ -21,7 +21,7 @@ import UserAddForm from '../user-add-form';
 import { UserTableHead } from '../user-table-head';
 import { UserTableRow } from '../user-table-row';
 import { UserTableToolbar } from '../user-table-toolbar';
-import { applyFilter, emptyRows, getComparator } from '../utils';
+import { emptyRows, applyFilter, getComparator } from '../utils';
 
 import type { UserProps } from '../user-table-row';
 

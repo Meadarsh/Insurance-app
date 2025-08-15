@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react';
-import { Box, Button, Grid, Pagination, Typography } from '@mui/material';
+import { Box, Grid, Button, Pagination, Typography } from '@mui/material';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { PolicySort } from '../policies-sort';
 import { PolicyItem } from '../policies-item';
-import { PolicyFilters, PolicyFiltersProps } from '../policies-filters';
+import type { PolicyFiltersProps } from '../policies-filters';
+import { PolicyFilters } from '../policies-filters';
 import { AddPolicyDrawer } from '../add-policy';
 import { Iconify } from 'src/components/iconify';
 

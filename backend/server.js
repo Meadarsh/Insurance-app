@@ -9,12 +9,12 @@ import policyRoutes from './src/routes/policy.routes.js';
 
 // Create Express app
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3001;
 
-// Connect to MongoDB
+// Connect to MongoDB (optional for development)
 connectDB().catch(err => {
-  console.error('Failed to connect to MongoDB:', err);
-  process.exit(1);
+  console.warn('Warning: Failed to connect to MongoDB:', err.message);
+  console.log('Server will start without database connection');
 });
 
 // Middleware

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, Card, CardContent, Grid, Typography, Button } from '@mui/material';
+import { Box, Card, Grid, Button, Typography, CardContent } from '@mui/material';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { Iconify } from 'src/components/iconify';
 

@@ -116,10 +116,10 @@ export const uploadVendors = async (req, res) => {
             Object.entries(row).forEach(([key, value]) => {
               if (value !== undefined && value !== null && value !== '') {
                 // Convert field names to match model (e.g., 'Payee Code' -> 'payeeCode')
+                // Only convert spaces to camelCase, preserve original case for other characters
                 const fieldName = key
-                  .toLowerCase()
                   .replace(/\s+(\w)/g, (_, letter) => letter.toUpperCase())
-                  .replace(/[^\w]/g, '');
+                  .replace(/\s+/g, ''); // Remove spaces only
                 
                 // Convert string numbers to actual numbers
                 if (!isNaN(value) && value !== '') {

@@ -1,19 +1,18 @@
 import {
+  Box,
+  Chip,
   Table,
+  Paper,
+  Tooltip,
+  TableRow,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
-  TableRow,
-  Paper,
-  Box,
   Typography,
-  Chip,
   IconButton,
-  Tooltip,
-  TablePagination,
+  TableContainer,
 } from '@mui/material';
-import { Download, Visibility, Edit, Delete } from '@mui/icons-material';
+import { Edit, Delete, Download, Visibility } from '@mui/icons-material';
 
 interface ReconciliationRecord {
   id: string;

@@ -2,7 +2,6 @@ import type { CardProps } from '@mui/material/Card';
 import type { PaletteColorKey } from 'src/theme/core';
 import type { ChartOptions } from 'src/components/chart';
 
-import { varAlpha } from 'minimal-shared/utils';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';

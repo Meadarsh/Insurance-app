@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Iconify } from 'src/components/iconify';
-import { Button, Popover, MenuList, Typography, MenuItem, menuItemClasses } from '@mui/material';
+import { Button, Popover, MenuList, MenuItem, Typography, menuItemClasses } from '@mui/material';
 
 type PolicySortProps = {
   sortBy: string;

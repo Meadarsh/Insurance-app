@@ -1,4 +1,4 @@
-import { Card, Stack, Typography, Chip } from '@mui/material';
+import { Card, Chip, Stack, Typography } from '@mui/material';
 
 type PolicyItemProps = {
   policy: {
