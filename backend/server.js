@@ -6,7 +6,7 @@ dotenv.config();
 import connectDB from './src/config/db.js';
 import vendorRoutes from './src/routes/vendor.routes.js';
 import policyRoutes from './src/routes/policy.routes.js';
-
+import authRoutes from './src/routes/auth.route.js';
 // Create Express app
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -26,6 +26,7 @@ app.use(morgan('dev'));
 // API Routes
 app.use('/api/vendors', vendorRoutes);
 app.use('/api/policies', policyRoutes);
+app.use('/api/auth', authRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
