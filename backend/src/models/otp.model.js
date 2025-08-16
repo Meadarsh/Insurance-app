@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import { toJSON, paginate } from './plugins';
 
 const otpSchema = mongoose.Schema(
   {
@@ -32,14 +31,8 @@ const otpSchema = mongoose.Schema(
   }
 );
 
-// Add plugin that converts mongoose to JSON
-otpSchema.plugin(toJSON);
-otpSchema.plugin(paginate);
-
-// Index for faster queries
 otpSchema.index({ email: 1, type: 1 });
 
-// Static method to find valid OTP
 otpSchema.statics.findValidOtp = async function (email, otp, type) {
   const currentDate = new Date();
   return this.findOne({

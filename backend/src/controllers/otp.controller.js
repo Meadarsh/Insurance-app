@@ -1,14 +1,8 @@
 import httpStatus from 'http-status';
-import ApiError from '../utils/ApiError';
-import { User } from '../models';
-import otpService from '../services/otp.service';
+import otpService from '../services/otp.service.js';
+import User from '../models/user.model.js';
 
-/**
- * Send OTP to user's email
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @param {Function} next - Express next middleware
- */
+
 const sendOtp = async (req, res, next) => {
   try {
     const { email, type = 'verification' } = req.body;
@@ -17,13 +11,19 @@ const sendOtp = async (req, res, next) => {
     if (type === 'signup') {
       const userExists = await User.isEmailTaken(email);
       if (userExists) {
-        throw new ApiError(httpStatus.BAD_REQUEST, 'Email already registered');
+        res.status(httpStatus.BAD_REQUEST).json({
+          success: false,
+          message: 'User already exists',
+        });
       }
     } else {
       // For other OTP types, check if user exists
       const user = await User.findOne({ email });
       if (!user) {
-        throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+        res.status(httpStatus.BAD_REQUEST).json({
+          success: false,
+          message: 'User not found',
+        });
       }
     }
 
@@ -34,16 +34,13 @@ const sendOtp = async (req, res, next) => {
       message: 'OTP sent successfully',
     });
   } catch (error) {
-    next(error);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to send OTP',
+    });
   }
 };
 
-/**
- * Verify OTP
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @param {Function} next - Express next middleware
- */
 const verifyOtp = async (req, res, next) => {
   try {
     const { email, otp, type = 'verification' } = req.body;
@@ -51,7 +48,10 @@ const verifyOtp = async (req, res, next) => {
     const isValid = await otpService.verifyOTP(email, otp, type);
     
     if (!isValid) {
-      throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid or expired OTP');
+      res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: 'Invalid or expired OTP',
+      });
     }
 
     // If this is a verification OTP, update user's verification status
@@ -68,7 +68,10 @@ const verifyOtp = async (req, res, next) => {
       message: 'OTP verified successfully',
     });
   } catch (error) {
-    next(error);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to verify OTP',
+    });
   }
 };
 

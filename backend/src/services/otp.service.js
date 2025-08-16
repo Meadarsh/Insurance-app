@@ -1,13 +1,7 @@
-import crypto from 'crypto';
-import OTP from '../models/otp.model';
-import { sendEmail } from './email.service';
-import config from '../config/config';
+import OTP from '../models/otp.model.js';
+import config from '../config/config.js';
 
-/**
- * Generate a random OTP
- * @param {number} length - Length of OTP
- * @returns {string} Generated OTP
- */
+
 const generateOTP = (length = 6) => {
   const digits = '0123456789';
   let otp = '';
@@ -19,13 +13,6 @@ const generateOTP = (length = 6) => {
   return otp;
 };
 
-/**
- * Create and save OTP
- * @param {string} email - User's email
- * @param {string} type - Type of OTP (signup, login, reset, verification)
- * @param {number} expiryMinutes - Expiry time in minutes
- * @returns {Promise<Object>} Created OTP document
- */
 const createOTP = async (email, type, expiryMinutes = 10) => {
   // Invalidate previous OTPs for this email and type
   await OTP.updateMany(
@@ -47,12 +34,6 @@ const createOTP = async (email, type, expiryMinutes = 10) => {
   return otpDoc;
 };
 
-/**
- * Send OTP to user's email
- * @param {string} email - User's email
- * @param {string} type - Type of OTP (signup, login, reset, verification)
- * @returns {Promise<Object>} Created OTP document
- */
 const sendOTP = async (email, type = 'verification') => {
   const otpDoc = await createOTP(email, type);
   
@@ -78,13 +59,6 @@ const sendOTP = async (email, type = 'verification') => {
   return otpDoc;
 };
 
-/**
- * Verify OTP
- * @param {string} email - User's email
- * @param {string} otp - OTP to verify
- * @param {string} type - Type of OTP (signup, login, reset, verification)
- * @returns {Promise<boolean>} True if OTP is valid
- */
 const verifyOTP = async (email, otp, type) => {
   const otpDoc = await OTP.findValidOtp(email, otp, type);
   

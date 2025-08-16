@@ -1,6 +1,6 @@
-const httpStatus = require('http-status');
-const ApiError = require('../utils/ApiError');
-const { verifyToken } = require('../utils/token');
+import User from "../models/user.model.js";
+import { verifyToken } from "../utils/token.js";
+
 
 const auth = (requiredRoles = []) => {
   return async (req, res, next) => {
@@ -25,7 +25,7 @@ const auth = (requiredRoles = []) => {
       req.user = user;
       next();
     } catch (error) {
-      next(new ApiError(httpStatus.UNAUTHORIZED, error.message));
+      next(error);
     }
   };
 };

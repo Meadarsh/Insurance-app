@@ -1,15 +1,9 @@
 import jwt from 'jsonwebtoken';
 import moment from 'moment';
-import config from '../config/config';
-import { tokenTypes } from '../config/tokens';
+import { tokenTypes } from '../config/tokens.js';
+import OTP from '../models/otp.model.js';
+import config from '../config/config.js';
 
-/**
- * Generate token
- * @param {ObjectId} userId
- * @param {string} type
- * @param {string} [secret]
- * @returns {string}
- */ 
 const generateToken = (userId, expires, type, secret = config.jwt.secret) => {
   const payload = {
     sub: userId,
@@ -20,26 +14,16 @@ const generateToken = (userId, expires, type, secret = config.jwt.secret) => {
   return jwt.sign(payload, secret);
 };
 
-/**
- * Verify token and return token doc (or throw an error if it is not valid)
- * @param {string} token
- * @param {string} type
- * @returns {Promise<Token>}
- */
 const verifyToken = async (token, type) => {
   const payload = jwt.verify(token, config.jwt.secret);
-  const tokenDoc = await Token.findOne({ token, type, user: payload.sub, blacklisted: false });
+  const tokenDoc = await OTP.findOne({ token, type, user: payload.sub, blacklisted: false });
   if (!tokenDoc) {
     throw new Error('Token not found');
   }
   return tokenDoc;
 };
 
-/**
- * Generate auth tokens
- * @param {User} user
- * @returns {Promise<Object>}
- */
+
 const generateAuthTokens = async (user) => {
   const accessTokenExpires = moment().add(config.jwt.accessExpirationMinutes, 'minutes');
   const accessToken = generateToken(user.id, accessTokenExpires, tokenTypes.ACCESS);
@@ -47,7 +31,13 @@ const generateAuthTokens = async (user) => {
   const refreshTokenExpires = moment().add(config.jwt.refreshExpirationDays, 'days');
   const refreshToken = generateToken(user.id, refreshTokenExpires, tokenTypes.REFRESH);
   
-  await saveToken(refreshToken, user.id, refreshTokenExpires, tokenTypes.REFRESH);
+  await OTP.create({
+    token: refreshToken,
+    user: user.id,
+    expiresAt: refreshTokenExpires.toDate(),
+    type: tokenTypes.REFRESH,
+    blacklisted: false,
+  });
 
   return {
     access: {
@@ -61,8 +51,9 @@ const generateAuthTokens = async (user) => {
   };
 };
 
-module.exports = {
-  generateToken,
+export { generateAuthTokens, verifyToken };
+
+export default {
   verifyToken,
   generateAuthTokens,
 };
