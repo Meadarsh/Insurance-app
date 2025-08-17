@@ -75,12 +75,6 @@ const VendorSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
-// Indexes for better query performance
-VendorSchema.index({ policyNo: 1 });
-VendorSchema.index({ payeeCode: 1 });
-VendorSchema.index({ agentNo: 1 });
-VendorSchema.index({ transactionDate: 1 });
-
 // Virtual for policy status based on CHDRSTCDB
 VendorSchema.virtual('policyStatus').get(function() {
   const statusMap = {
