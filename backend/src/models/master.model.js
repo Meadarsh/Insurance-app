@@ -14,7 +14,8 @@ const masterSchema = new mongoose.Schema({
   productVariant: { type: String },                          
   totalRate: { type: Number },    // in %                            
   commission: { type: Number },   // in %                            
-  reward: { type: Number },       // in %                            
+  reward: { type: Number },       // in %        
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },                    
 }, { timestamps: true });
 
 export default mongoose.model("Master", masterSchema);

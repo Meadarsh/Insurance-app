@@ -5,7 +5,8 @@ import fs from 'fs';
 // Create a new master record
 export const createMaster = async (req, res) => {
   try {
-    const master = await Master.create(req.body);
+    const userId = req.user._id;
+    const master = await Master.create({ ...req.body, userId });
     res.status(201).json({ success: true, data: master });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
@@ -15,7 +16,7 @@ export const createMaster = async (req, res) => {
 // Get all master records
 export const getMasters = async (req, res) => {
   try {
-    const masters = await Master.find().sort({ createdAt: -1 });
+    const masters = await Master.find({ userId: req.user._id }).sort({ createdAt: -1 });
     res.status(200).json({ success: true, count: masters.length, data: masters });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
@@ -25,7 +26,7 @@ export const getMasters = async (req, res) => {
 // Get single master record
 export const getMaster = async (req, res) => {
   try {
-    const master = await Master.findById(req.params.id);
+    const master = await Master.findById(req.params.id).populate('userId');
     if (!master) {
       return res.status(404).json({ success: false, error: 'Master record not found' });
     }
@@ -100,7 +101,8 @@ export const uploadCSV = async (req, res) => {
           productVariant: data['Product Variant'],
           totalRate: Number(String(data['Total Rate'] || 0).replace('%', '')),
           commission: Number(String(data['Commission'] || 0).replace('%', '')),
-          reward: Number(String(data['Reward'] || 0).replace('%', ''))
+          reward: Number(String(data['Reward'] || 0).replace('%', '')),
+          userId: req.user._id
         };
         results.push(masterData);
       })
