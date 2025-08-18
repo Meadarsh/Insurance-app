@@ -39,18 +39,8 @@ const sendOTP = async (email, type = 'verification') => {
   
   // In production, you would send an actual email here
   if (config.env === 'production') {
-    await sendEmail({
-      to: email,
-      subject: `Your OTP for ${type}`,
-      text: `Your OTP is ${otpDoc.otp}. It will expire in 10 minutes.`,
-      html: `
-        <div>
-          <h2>Your Verification Code</h2>
-          <p>Your OTP is: <strong>${otpDoc.otp}</strong></p>
-          <p>This code will expire in 10 minutes.</p>
-        </div>
-      `,
-    });
+    // TODO: Implement email service
+    console.log(`Production: OTP for ${email} (${type}): ${otpDoc.otp}`);
   } else {
     // In development, log the OTP to console
     console.log(`OTP for ${email} (${type}): ${otpDoc.otp}`);

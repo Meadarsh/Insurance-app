@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
 
 const userSchema = mongoose.Schema(
   {
@@ -40,12 +41,10 @@ const userSchema = mongoose.Schema(
   }
 );
 
-
 userSchema.statics.isEmailTaken = async function (email, excludeUserId) {
   const user = await this.findOne({ email, _id: { $ne: excludeUserId } });
   return !!user;
 };
-
 
 userSchema.methods.isPasswordMatch = async function (password) {
   const user = this;

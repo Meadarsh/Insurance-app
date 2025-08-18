@@ -18,6 +18,7 @@ export const UserPage = lazy(() => import('src/pages/user'));
 export const PoliciesPage = lazy(() => import('src/pages/policies'));
 export const SignInPage = lazy(() => import('src/pages/sign-in'));
 export const SignUpPage = lazy(() => import('src/pages/sign-up'));
+export const OtpVerificationPage = lazy(() => import('src/pages/otp-verification'));
 export const ProductsPage = lazy(() => import('src/pages/policies'));
 export const RewardsPage = lazy(() => import('src/pages/rewards'));
 export const CommissionPage = lazy(() => import('src/pages/commission'));
@@ -76,6 +77,14 @@ export const routesSection: RouteObject[] = [
     element: (
       <AuthLayout>
         <SignUpPage />
+      </AuthLayout>
+    ),
+  },
+  {
+    path: '/auth/otp-verification',
+    element: (
+      <AuthLayout>
+        <OtpVerificationPage />
       </AuthLayout>
     ),
   },
