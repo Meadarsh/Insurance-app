@@ -1,9 +1,5 @@
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/insurance-app';
+import config from './config.js';
 
 // Cache the database connection to prevent multiple connections
 let cached = global.mongoose;
@@ -28,7 +24,7 @@ async function connectDB() {
       socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+    cached.promise = mongoose.connect(config.mongo.uri, opts).then((mongoose) => {
       console.log('MongoDB connected successfully');
       return mongoose;
     }).catch((error) => {

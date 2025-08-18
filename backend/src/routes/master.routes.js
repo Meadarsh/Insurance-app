@@ -1,6 +1,6 @@
 import express from 'express';
 import { createMaster, getMasters, getMaster, updateMaster, deleteMaster, uploadCSV } from '../controllers/master.controller.js';
-import auth from '../middleware/auth.js';
+import protect from '../middleware/auth.js';
 import multer from 'multer';
 
 const router = express.Router();
@@ -8,20 +8,12 @@ const router = express.Router();
 // Configure multer for file upload
 const upload = multer({ dest: 'uploads/' });
 
-// Apply auth middleware to all routes
-// router.use(auth);
+router.get('/get', getMasters);
+router.post('/create', createMaster);
+router.post('/upload-csv',protect, upload.single('file'), uploadCSV);
+router.put('/update/:id', updateMaster);
+router.delete('/delete/:id', deleteMaster);
+router.get('/get/:id', getMaster);
 
-// Routes
-router.route('/')
-  .post(createMaster)
-  .get(getMasters);
-
-router.route('/upload-csv')
-  .post(upload.single('file'), uploadCSV);
-
-router.route('/:id')
-  .get(getMaster)
-  .put(updateMaster)
-  .delete(deleteMaster);
 
 export default router;

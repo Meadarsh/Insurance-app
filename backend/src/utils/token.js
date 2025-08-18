@@ -27,8 +27,19 @@ const generateAuthTokens = async (user) => {
   };
 };
 
-export { generateAuthTokens };
+const verifyToken = async (token, type) => {
+  console.log('Verifying token type:',token);
+  
+  const payload = jwt.verify(token, config.jwt.secret);
+  if(payload.type !== type){
+    throw new Error('Invalid token type');
+  }
+  return payload;
+};
+
+export { generateAuthTokens, verifyToken };
 
 export default {
   generateAuthTokens,
+  verifyToken,
 };

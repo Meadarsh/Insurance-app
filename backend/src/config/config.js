@@ -8,7 +8,7 @@ export default {
   port: process.env.PORT || 3000,
   jwt: {
     secret: process.env.JWT_SECRET || 'your-secret-key', // Change this in production
-    accessExpirationMinutes: process.env.JWT_ACCESS_EXPIRATION_MINUTES || 15,
+    accessExpirationMinutes: process.env.JWT_ACCESS_EXPIRATION_MINUTES || 1500,
     refreshExpirationDays: process.env.JWT_REFRESH_EXPIRATION_DAYS || 30,
   },
   mongo: {
