@@ -23,8 +23,6 @@ async function connectDB() {
 
   if (!cached.promise) {
     const opts = {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
       bufferCommands: false, // Disable mongoose buffering
       serverSelectionTimeoutMS: 10000, // Timeout after 10s instead of 30s for faster failure
       socketTimeoutMS: 45000, // Close sockets after 45s of inactivity

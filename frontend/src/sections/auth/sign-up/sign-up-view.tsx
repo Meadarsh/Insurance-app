@@ -8,25 +8,115 @@ import TextField from '@mui/material/TextField';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import InputAdornment from '@mui/material/InputAdornment';
+import Alert from '@mui/material/Alert';
+import CircularProgress from '@mui/material/CircularProgress';
 
 import { useRouter } from 'src/routes/hooks';
+import { authAPI } from 'src/services/auth';
 
 import { Iconify } from 'src/components/iconify';
 
 // ----------------------------------------------------------------------
 
+interface FormData {
+  name: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
+interface FormErrors {
+  name?: string;
+  email?: string;
+  password?: string;
+  confirmPassword?: string;
+}
+
 export function SignUpView() {
   const router = useRouter();
+
+  const [formData, setFormData] = useState<FormData>({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
+
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState('');
 
   const [showPassword, setShowPassword] = useState({
     password: false,
     confirmPassword: false,
   });
 
-  const handleSignUp = useCallback(() => {
-    // TODO: Implement sign up logic
-    router.push('/auth/sign-in');
-  }, [router]);
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
+
+    if (!formData.name.trim()) {
+      newErrors.name = 'Name is required';
+    }
+
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters long';
+    } else if (!/(?=.*[a-z])/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one lowercase letter';
+    } else if (!/(?=.*[A-Z])/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one uppercase letter';
+    } else if (!/(?=.*\d)/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one number';
+    }
+
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password';
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleInputChange = (field: keyof FormData) => (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setFormData(prev => ({ ...prev, [field]: event.target.value }));
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }));
+    }
+    setApiError('');
+  };
+
+  const handleSignUp = useCallback(async () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    setLoading(true);
+    setApiError('');
+
+    try {
+      // First, send OTP for signup verification
+      await authAPI.sendOTP(formData.email, 'signup');
+      
+      // Redirect to OTP verification page
+      router.push(`/auth/otp-verification?email=${encodeURIComponent(formData.email)}&name=${encodeURIComponent(formData.name)}&password=${encodeURIComponent(formData.password)}`);
+    } catch (error: any) {
+      setApiError(error.message || 'Failed to send OTP');
+    } finally {
+      setLoading(false);
+    }
+  }, [formData, router]);
 
   const toggleShowPassword = (field: 'password' | 'confirmPassword') => {
     setShowPassword((prev) => ({
@@ -37,17 +127,29 @@ export function SignUpView() {
 
   const renderForm = (
     <Box
+      component="form"
+      onSubmit={(e) => { e.preventDefault(); handleSignUp(); }}
       sx={{
         display: 'flex',
         flexDirection: 'column',
         gap: 3,
       }}
     >
+      {apiError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {apiError}
+        </Alert>
+      )}
+
       <TextField
         fullWidth
-        name="fullName"
+        name="name"
         label="Full Name"
         placeholder="Enter your full name"
+        value={formData.name}
+        onChange={handleInputChange('name')}
+        error={!!errors.name}
+        helperText={errors.name}
         required
       />
 
@@ -57,6 +159,10 @@ export function SignUpView() {
         type="email"
         label="Email address"
         placeholder="Enter your email"
+        value={formData.email}
+        onChange={handleInputChange('email')}
+        error={!!errors.email}
+        helperText={errors.email}
         required
       />
 
@@ -66,6 +172,10 @@ export function SignUpView() {
         label="Password"
         placeholder="Create a password"
         type={showPassword.password ? 'text' : 'password'}
+        value={formData.password}
+        onChange={handleInputChange('password')}
+        error={!!errors.password}
+        helperText={errors.password}
         required
         InputProps={{
           endAdornment: (
@@ -88,6 +198,10 @@ export function SignUpView() {
         label="Confirm Password"
         placeholder="Confirm your password"
         type={showPassword.confirmPassword ? 'text' : 'password'}
+        value={formData.confirmPassword}
+        onChange={handleInputChange('confirmPassword')}
+        error={!!errors.confirmPassword}
+        helperText={errors.confirmPassword}
         required
         InputProps={{
           endAdornment: (
@@ -109,10 +223,10 @@ export function SignUpView() {
         size="large"
         type="submit"
         variant="contained"
-        onClick={handleSignUp}
+        disabled={loading}
         sx={{ mt: 2 }}
       >
-        Create Account
+        {loading ? <CircularProgress size={24} /> : 'Create Account'}
       </Button>
     </Box>
   );

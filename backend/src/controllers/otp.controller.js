@@ -2,16 +2,18 @@ import httpStatus from 'http-status';
 import otpService from '../services/otp.service.js';
 import User from '../models/user.model.js';
 
-
 const sendOtp = async (req, res, next) => {
   try {
+    console.log('OTP Send Request received:', req.body);
     const { email, type = 'verification' } = req.body;
 
+    console.log('Checking user existence...');
     // Check if user exists for signup OTP
     if (type === 'signup') {
       const userExists = await User.isEmailTaken(email);
+      console.log('User exists check completed:', userExists);
       if (userExists) {
-        res.status(httpStatus.BAD_REQUEST).json({
+        return res.status(httpStatus.BAD_REQUEST).json({
           success: false,
           message: 'User already exists',
         });
@@ -19,25 +21,26 @@ const sendOtp = async (req, res, next) => {
     } else {
       // For other OTP types, check if user exists
       const user = await User.findOne({ email });
+      console.log('User lookup completed:', !!user);
       if (!user) {
-        res.status(httpStatus.BAD_REQUEST).json({
+        return res.status(httpStatus.BAD_REQUEST).json({
           success: false,
           message: 'User not found',
         });
       }
     }
 
+    console.log('Sending OTP...');
     await otpService.sendOTP(email, type);
+    console.log('OTP sent successfully');
     
     res.status(httpStatus.OK).json({
       success: true,
       message: 'OTP sent successfully',
     });
   } catch (error) {
-    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      message: 'Failed to send OTP',
-    });
+    console.error('OTP Send Error:', error);
+    next(error);
   }
 };
 
@@ -48,7 +51,7 @@ const verifyOtp = async (req, res, next) => {
     const isValid = await otpService.verifyOTP(email, otp, type);
     
     if (!isValid) {
-      res.status(httpStatus.BAD_REQUEST).json({
+      return res.status(httpStatus.BAD_REQUEST).json({
         success: false,
         message: 'Invalid or expired OTP',
       });
@@ -68,10 +71,7 @@ const verifyOtp = async (req, res, next) => {
       message: 'OTP verified successfully',
     });
   } catch (error) {
-    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      message: 'Failed to verify OTP',
-    });
+    next(error);
   }
 };
 

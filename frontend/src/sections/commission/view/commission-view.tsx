@@ -136,6 +136,40 @@ export default function CommissionView() {
     setIsUploading(false);
   };
 
+  const handleDownloadFormat = (type: 'master' | 'vendor') => {
+    // Create sample format data based on type
+    let csvContent = '';
+    let filename = '';
+    
+    if (type === 'master') {
+      filename = 'master_format.csv';
+      csvContent = `Policy Number,Policy Holder Name,Policy Type,Start Date,End Date,Premium Amount,Commission Rate,Commission Amount
+POL001,John Doe,Life Insurance,2024-01-01,2025-01-01,1200.00,0.15,180.00
+POL002,Jane Smith,Health Insurance,2024-01-15,2025-01-15,800.00,0.12,96.00
+POL003,Mike Johnson,Car Insurance,2024-01-20,2025-01-20,600.00,0.10,60.00`;
+    } else {
+      filename = 'vendor_format.csv';
+      csvContent = `Vendor Name,Policy Number,Commission Amount,Payment Date,Status
+Vendor A,POL001,180.00,2024-01-15,Paid
+Vendor B,POL002,96.00,2024-01-20,Paid
+Vendor C,POL003,60.00,2024-01-25,Pending`;
+    }
+    
+    // Create and download the file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    setSuccessMessage(`${type === 'master' ? 'Master' : 'Vendor'} format file downloaded successfully!`);
+    setShowSuccessMessage(true);
+  };
+
   const filteredData = reconciliationData.filter(record => {
     if (sourceFilter !== 'All' && record.source !== sourceFilter) return false;
     if (statusFilter !== 'All' && record.status !== statusFilter) return false;
@@ -213,6 +247,15 @@ export default function CommissionView() {
           </Button>
           
           <Button
+            variant="outlined"
+            startIcon={<Description />}
+            onClick={() => handleDownloadFormat('master')}
+            sx={{ px: 3, py: 1.5 }}
+          >
+            Download Master Format
+          </Button>
+          
+          <Button
             variant="contained"
             startIcon={<CloudUpload />}
             onClick={() => setVendorFileDialogOpen(true)}
@@ -220,6 +263,15 @@ export default function CommissionView() {
             sx={{ px: 3, py: 1.5 }}
           >
             {isUploading ? 'Uploading...' : 'Upload Vendor File'}
+          </Button>
+          
+          <Button
+            variant="outlined"
+            startIcon={<Description />}
+            onClick={() => handleDownloadFormat('vendor')}
+            sx={{ px: 3, py: 1.5 }}
+          >
+            Download Vendor Format
           </Button>
         </Box>
 
