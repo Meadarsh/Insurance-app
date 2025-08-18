@@ -51,7 +51,11 @@ const policySchema = new mongoose.Schema({
   agentType: { type: String },
   agentAppointedDt: { type: Date },
   agentTerminatedDt: { type: Date },
-  AGNTNUM_1_TO_MANY: { type: String }
+  AGNTNUM_1_TO_MANY: { type: String },
+  totalRate: { type: Number },                               
+  commission: { type: Number },                              
+  reward: { type: Number },
+  masterRef: { type: mongoose.Schema.Types.ObjectId, ref: "Master" },
 }, { timestamps: true });
 
 export default mongoose.model("Policy", policySchema);

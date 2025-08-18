@@ -30,4 +30,4 @@ const auth = (requiredRoles = []) => {
   };
 };
 
-module.exports = auth;
+export default auth;

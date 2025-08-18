@@ -1,0 +1,4 @@
+Product Name,Premium Paying Term,Policy Term,Policy Number,Policy Prices,Product Variant,Total Rate,Commission,Reward
+Life Secure Plan,10,20,POL123456,"[{'price': 5000, 'date': '2023-01-01'}, {'price': 5200, 'date': '2024-01-01'}]",Gold,5.5,2.0,1000
+Health Plus Plan,15,25,POL654321,"[{'price': 8000, 'date': '2023-02-01'}, {'price': 8500, 'date': '2024-02-01'}]",Platinum,6.0,2.5,1500
+Wealth Builder Plan,12,18,POL112233,"[{'price': 12000, 'date': '2023-03-01'}, {'price': 12500, 'date': '2024-03-01'}]",Silver,4.8,1.8,800

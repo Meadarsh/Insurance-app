@@ -8,6 +8,7 @@ import vendorRoutes from './src/routes/vendor.routes.js';
 import policyRoutes from './src/routes/policy.routes.js';
 import authRoutes from './src/routes/auth.route.js';
 import otpRoutes from './src/routes/otp.route.js';
+import masterRoutes from './src/routes/master.routes.js';
 // Create Express app
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -29,6 +30,7 @@ app.use('/api/vendors', vendorRoutes);
 app.use('/api/policies', policyRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/otp', otpRoutes);
+app.use('/api/masters', masterRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
