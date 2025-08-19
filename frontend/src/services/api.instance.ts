@@ -17,9 +17,6 @@ ApiInstance.interceptors.request.use(
         }
         return config;
     },
-    (error) => {
-        return Promise.reject(error);
-    }
 );
 
 export default ApiInstance;
