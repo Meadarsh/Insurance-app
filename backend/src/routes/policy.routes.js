@@ -10,7 +10,7 @@ import {
   searchPolicies,
   getPolicyStats
 } from '../controllers/policy.controller.js';
-
+import protect from '../middleware/auth.js';
 const router = express.Router();
 
 // Configure multer for file upload
@@ -41,6 +41,6 @@ router.put('/:id', updatePolicy);
 router.delete('/:id', deletePolicy);
 
 // CSV Upload route
-router.post('/upload', upload.single('file'), uploadPolicies);
+router.post('/upload', protect, upload.single('file'), uploadPolicies);
 
 export default router;
