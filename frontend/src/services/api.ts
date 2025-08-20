@@ -1,6 +1,6 @@
 import { policyAPI } from './policy';
 
-const API_BASE_URL = 'http://localhost:5002/api';
+const API_BASE_URL = 'http://localhost:3001/api';
 
 // Generic API request function
 async function apiRequest<T>(

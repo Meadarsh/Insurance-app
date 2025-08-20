@@ -2,10 +2,9 @@ import 'src/global.css';
 
 import { useEffect } from 'react';
 
-
 import { usePathname } from 'src/routes/hooks';
-
 import { ThemeProvider } from 'src/theme/theme-provider';
+import { AuthProvider } from './contexts/AuthContext';
 
 
 // ----------------------------------------------------------------------
@@ -20,7 +19,9 @@ export default function App({ children }: AppProps) {
 
   return (
     <ThemeProvider>
-      {children}
+      <AuthProvider>
+        {children}
+      </AuthProvider>
     </ThemeProvider>
   );
 }

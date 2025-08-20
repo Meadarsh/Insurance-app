@@ -5,18 +5,20 @@ import fs from 'fs';
 // Create a new master record
 export const createMaster = async (req, res) => {
   try {
-    const userId = req.user._id;
+    // Use a default user ID or make userId optional
+    const userId = req.user?._id || '000000000000000000000000'; // Default ObjectId
     const master = await Master.create({ ...req.body, userId });
     res.status(201).json({ success: true, data: master });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
   }
-};
+ };
 
 // Get all master records
 export const getMasters = async (req, res) => {
   try {
-    const masters = await Master.find({ userId: req.user._id }).sort({ createdAt: -1 });
+    // Get all masters without user filtering for now
+    const masters = await Master.find().sort({ createdAt: -1 });
     res.status(200).json({ success: true, count: masters.length, data: masters });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
@@ -72,61 +74,119 @@ export const uploadCSV = async (req, res) => {
     return res.status(400).json({ success: false, error: 'Please upload a CSV file' });
   }
 
+  console.log('File received:', req.file);
+  console.log('File path:', req.file.path);
+  console.log('File size:', req.file.size);
+
   const results = [];
   
   try {
-    fs.createReadStream(req.file.path)
-      .pipe(csv())
-      .on('data', (data) => {
-        // Transform CSV data to match Master schema
-        const masterData = {
-          productName: data['Product Name'],
-          premiumPayingTerm: (() => {
-            const term = data['Premium Paying Term'] || '0';
-            if (term.includes('+')) {
-              const minValue = parseInt(term);
-              return { min: isNaN(minValue) ? 0 : minValue, max: null };
+    // Check if file exists and is readable
+    if (!fs.existsSync(req.file.path)) {
+      return res.status(500).json({ success: false, error: 'Uploaded file not found' });
+    }
+
+    // Create a promise-based CSV processing
+    const processCSV = () => {
+      return new Promise((resolve, reject) => {
+        const stream = fs.createReadStream(req.file.path);
+        
+        stream.on('error', (error) => {
+          console.error('Stream error:', error);
+          reject(error);
+        });
+
+        stream
+          .pipe(csv())
+          .on('data', (data) => {
+            try {
+              console.log('Processing CSV row:', data);
+              // Transform CSV data to match Master schema
+              const masterData = {
+                productName: data['Product Name'] || 'Unknown Product',
+                premiumPayingTerm: (() => {
+                  const term = data['Premium Paying Term'] || '0';
+                  if (term.includes('+')) {
+                    const minValue = parseInt(term);
+                    return { min: isNaN(minValue) ? 0 : minValue, max: null };
+                  }
+                  const numValue = parseInt(term);
+                  return { min: isNaN(numValue) ? 0 : numValue, max: isNaN(numValue) ? 0 : numValue };
+                })(),
+                policyTerm: Number(data['Policy Term'] || 0),
+                policyNumber: data['Policy Number'] || `POL${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                policyPrices: [
+                  {
+                    price: Number(data['Policy Prices'] || 0),
+                    date: new Date()
+                  }
+                ],
+                productVariant: data['Product Variant'] || 'Standard',
+                totalRate: Number(String(data['Total Rate'] || 0).replace('%', '')) || 0,
+                commission: Number(String(data['Commission'] || 0).replace('%', '')) || 0,
+                reward: Number(String(data['Reward'] || 0).replace('%', '')) || 0,
+                userId: req.user?._id || '000000000000000000000000' // Default ObjectId
+              };
+              results.push(masterData);
+            } catch (rowError) {
+              console.error('Error processing row:', rowError, data);
+              // Continue processing other rows
             }
-            const numValue = parseInt(term);
-            return { min: isNaN(numValue) ? 0 : numValue, max: isNaN(numValue) ? 0 : numValue };
-          })(),
-          policyTerm: Number(data['Policy Term'] || 0),
-          policyNumber: data['Policy Number'],
-          policyPrices: [
-            {
-              price: Number(data['Policy Prices'] || 0),
-              date: new Date()
-            }
-          ],
-          productVariant: data['Product Variant'],
-          totalRate: Number(String(data['Total Rate'] || 0).replace('%', '')),
-          commission: Number(String(data['Commission'] || 0).replace('%', '')),
-          reward: Number(String(data['Reward'] || 0).replace('%', '')),
-          userId: req.user._id
-        };
-        results.push(masterData);
-      })
-      .on('end', async () => {
-        try {
-          // Remove existing records if needed
-          // await Master.deleteMany({});
-          
-          // Insert new records
-          const createdMasters = await Master.insertMany(results);
-          
-          // Delete the file after processing
-          fs.unlinkSync(req.file.path);
-          
-          res.status(201).json({
-            success: true,
-            count: createdMasters.length,
-            data: createdMasters
+          })
+          .on('end', () => {
+            console.log('CSV processing completed. Rows processed:', results.length);
+            resolve(results);
+          })
+          .on('error', (error) => {
+            console.error('CSV parsing error:', error);
+            reject(error);
           });
-        } catch (error) {
-          res.status(400).json({ success: false, error: error.message });
-        }
       });
+    };
+
+    // Process the CSV
+    await processCSV();
+    
+    if (results.length === 0) {
+      // Clean up the file
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(400).json({ success: false, error: 'No valid data found in CSV file' });
+    }
+
+    console.log('Attempting to insert', results.length, 'records into database');
+    
+    // Insert new records
+    const createdMasters = await Master.insertMany(results);
+    console.log('Successfully inserted', createdMasters.length, 'records');
+    
+    // Clean up the file after processing
+    if (fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    
+    res.status(201).json({
+      success: true,
+      count: createdMasters.length,
+      data: createdMasters
+    });
+    
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error('Upload CSV error:', error);
+    
+    // Clean up the file on error
+    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (cleanupError) {
+        console.error('Error cleaning up file:', cleanupError);
+      }
+    }
+    
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Internal server error during CSV processing' 
+    });
   }
 };

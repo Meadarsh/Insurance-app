@@ -18,9 +18,12 @@ import {
 import { Refresh, FilterList, CloudUpload, Description } from '@mui/icons-material';
 import { DashboardContent } from 'src/layouts/dashboard';
 import UploadMasterFileDialog from '../components/UploadMasterFileDialog';
+import PolicyDataTable from '../components/PolicyDataTable';
 import UploadVendorFileDialog from '../components/UploadVendorFileDialog';
 import CommissionTable from '../components/CommissionTable';
 import ReconciliationSummary from '../components/ReconciliationSummary';
+import MasterDataTable from '../components/MasterDataTable';
+
 
 interface ReconciliationRecord {
   id: string;
@@ -36,6 +39,7 @@ interface ReconciliationRecord {
 
 export default function CommissionView() {
   const [activeTab, setActiveTab] = useState(0);
+  const [masterDataRefreshTrigger, setMasterDataRefreshTrigger] = useState(0);
   const [reconciliationData, setReconciliationData] = useState<ReconciliationRecord[]>([
     {
       id: '1',
@@ -97,10 +101,11 @@ export default function CommissionView() {
     }, 1500);
   };
 
-  const handleMasterFileUploaded = (fileName: string) => {
+  const handleMasterFileUploaded = (fileName: string, fileType: 'master' | 'policy') => {
+    const source = fileType === 'policy' ? 'Policy' : 'Master';
     const newRecord: ReconciliationRecord = {
       id: Date.now().toString(),
-      source: 'Master',
+      source,
       month: 'July 2024',
       fileName,
       uploadedAt: new Date().toISOString(),
@@ -111,10 +116,21 @@ export default function CommissionView() {
     };
     
     setReconciliationData(prev => [newRecord, ...prev]);
-    setSuccessMessage(`Master file "${fileName}" uploaded successfully! Processing ${newRecord.totalProcessedRecords.toLocaleString()} records.`);
+    setSuccessMessage(`${source} file "${fileName}" uploaded successfully! Processing ${newRecord.totalProcessedRecords.toLocaleString()} records.`);
     setShowSuccessMessage(true);
     setIsUploading(false);
+    
+    // Trigger refresh of appropriate data table
+    if (fileType === 'policy') {
+      // Refresh policy data table
+      setMasterDataRefreshTrigger(prev => prev + 1);
+    } else {
+      // Refresh master data table
+      setMasterDataRefreshTrigger(prev => prev + 1);
+    }
   };
+
+
 
   const handleVendorFileUploaded = (fileName: string, vendor: string, month: Date) => {
     const monthString = month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -143,10 +159,10 @@ export default function CommissionView() {
     
     if (type === 'master') {
       filename = 'master_format.csv';
-      csvContent = `Policy Number,Policy Holder Name,Policy Type,Start Date,End Date,Premium Amount,Commission Rate,Commission Amount
-POL001,John Doe,Life Insurance,2024-01-01,2025-01-01,1200.00,0.15,180.00
-POL002,Jane Smith,Health Insurance,2024-01-15,2025-01-15,800.00,0.12,96.00
-POL003,Mike Johnson,Car Insurance,2024-01-20,2025-01-20,600.00,0.10,60.00`;
+      csvContent = `Product Name,Premium Paying Term,Policy Term,Policy Number,Policy Prices,Product Variant,Total Rate,Commission,Reward
+Life Insurance Pro,10,20,POL001,1000.00,Standard,5.5,2.5,1.0
+Health Shield Plus,5+,15,POL002,800.00,Premium,4.8,2.0,0.8
+Auto Protect Gold,3,10,POL003,600.00,Basic,6.2,3.0,1.2`;
     } else {
       filename = 'vendor_format.csv';
       csvContent = `Vendor Name,Policy Number,Commission Amount,Payment Date,Status
@@ -182,15 +198,19 @@ Vendor C,POL003,60.00,2024-01-25,Pending`;
     masterFileAmount: reconciliationData
       .filter(record => record.source === 'Master')
       .reduce((sum, record) => sum + record.totalReconValue, 0),
-    vendorFileCount: reconciliationData.filter(record => record.source !== 'Master').length,
+    policyFileCount: reconciliationData.filter(record => record.source === 'Policy').length,
+    policyFileAmount: reconciliationData
+      .filter(record => record.source === 'Policy')
+      .reduce((sum, record) => sum + record.totalReconValue, 0),
+    vendorFileCount: reconciliationData.filter(record => record.source !== 'Master' && record.source !== 'Policy').length,
     vendorFileAmount: reconciliationData
-      .filter(record => record.source !== 'Master')
+      .filter(record => record.source !== 'Master' && record.source !== 'Policy')
       .reduce((sum, record) => sum + record.totalReconValue, 0),
     delta: reconciliationData
       .filter(record => record.source === 'Master')
       .reduce((sum, record) => sum + record.totalReconValue, 0) -
       reconciliationData
-        .filter(record => record.source !== 'Master')
+        .filter(record => record.source !== 'Master' && record.source !== 'Policy')
         .reduce((sum, record) => sum + record.totalReconValue, 0),
   };
 
@@ -243,7 +263,7 @@ Vendor C,POL003,60.00,2024-01-25,Pending`;
             disabled={isUploading}
             sx={{ px: 3, py: 1.5 }}
           >
-            {isUploading ? 'Uploading...' : 'Upload Master File'}
+            {isUploading ? 'Uploading...' : 'Upload File (Master/Policy)'}
           </Button>
           
           <Button
@@ -252,7 +272,7 @@ Vendor C,POL003,60.00,2024-01-25,Pending`;
             onClick={() => handleDownloadFormat('master')}
             sx={{ px: 3, py: 1.5 }}
           >
-            Download Master Format
+            Download Master/Policy Format
           </Button>
           
           <Button
@@ -281,6 +301,8 @@ Vendor C,POL003,60.00,2024-01-25,Pending`;
             <Tab label="Dashboard" />
             <Tab label="Upload File" />
             <Tab label="Explore Records" />
+            <Tab label="Master Data" />
+            <Tab label="Policy Data" />
             <Tab label="Generate Report" />
           </Tabs>
         </Box>
@@ -309,7 +331,8 @@ Vendor C,POL003,60.00,2024-01-25,Pending`;
                     >
                       <MenuItem value="All">All</MenuItem>
                       <MenuItem value="Master">Master</MenuItem>
-                      {Array.from(new Set(reconciliationData.filter(r => r.source !== 'Master').map(r => r.source))).map(source => (
+                      <MenuItem value="Policy">Policy</MenuItem>
+                      {Array.from(new Set(reconciliationData.filter(r => r.source !== 'Master' && r.source !== 'Policy').map(r => r.source))).map(source => (
                         <MenuItem key={source} value={source}>{source}</MenuItem>
                       ))}
                     </Select>
@@ -374,6 +397,18 @@ Vendor C,POL003,60.00,2024-01-25,Pending`;
         )}
 
         {activeTab === 3 && (
+          <Box>
+            <MasterDataTable refreshTrigger={masterDataRefreshTrigger} />
+          </Box>
+        )}
+
+        {activeTab === 4 && (
+          <Box>
+            <PolicyDataTable refreshTrigger={masterDataRefreshTrigger} />
+          </Box>
+        )}
+
+        {activeTab === 5 && (
           <Box>
             <Card>
               <CardContent sx={{ textAlign: 'center', py: 6 }}>

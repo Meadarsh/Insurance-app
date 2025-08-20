@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:5002/api';
+const API_BASE_URL = 'http://localhost:3001/api';
 
 // Generic API request function
 async function apiRequest<T>(
@@ -30,6 +30,37 @@ async function apiRequest<T>(
   }
 }
 
+// Token management functions
+export const tokenManager = {
+  // Get access token from localStorage
+  getAccessToken: (): string | null => localStorage.getItem('accessToken'),
+
+  // Get refresh token from localStorage
+  getRefreshToken: (): string | null => localStorage.getItem('refreshToken'),
+
+  // Set tokens in localStorage
+  setTokens: (accessToken: string, refreshToken: string): void => {
+    localStorage.setItem('accessToken', accessToken);
+    localStorage.setItem('refreshToken', refreshToken);
+  },
+
+  // Clear tokens from localStorage
+  clearTokens: (): void => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+  },
+
+  // Check if token is expired
+  isTokenExpired: (token: string): boolean => {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.exp * 1000 < Date.now();
+    } catch {
+      return true;
+    }
+  },
+};
+
 // Authentication API functions
 export const authAPI = {
   // User registration
@@ -47,10 +78,25 @@ export const authAPI = {
   login: async (credentials: {
     email: string;
     password: string;
-  }) => apiRequest('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify(credentials),
-  }),
+  }) => {
+    const response = await apiRequest<{
+      success: boolean;
+      data: {
+        user: any;
+        accessToken: string;
+        refreshToken: string;
+      };
+    }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    });
+
+    if (response.success && response.data) {
+      tokenManager.setTokens(response.data.accessToken, response.data.refreshToken);
+    }
+
+    return response;
+  },
 
   // Refresh authentication token
   refreshToken: async (refreshToken: string) => apiRequest('/auth/refresh-token', {
@@ -69,6 +115,11 @@ export const authAPI = {
     method: 'POST',
     body: JSON.stringify({ email, otp, type }),
   }),
+
+  // Logout
+  logout: (): void => {
+    tokenManager.clearTokens();
+  },
 };
 
 export default authAPI;

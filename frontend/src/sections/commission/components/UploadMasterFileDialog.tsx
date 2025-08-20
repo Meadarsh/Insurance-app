@@ -9,13 +9,17 @@ import {
   DialogContent,
   DialogActions,
   CircularProgress,
+  Alert,
+  Snackbar,
 } from '@mui/material';
 import { X, CloudUpload, Description } from '@mui/icons-material';
+import { masterAPI } from '../../../services/master';
+import { commissionPolicyAPI } from '../../../services/policy';
 
 interface UploadMasterFileDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onFileUploaded?: (fileName: string) => void;
+  onFileUploaded?: (fileName: string, fileType: 'master' | 'policy') => void;
 }
 
 export default function UploadMasterFileDialog({
@@ -26,6 +30,35 @@ export default function UploadMasterFileDialog({
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [detectedFileType, setDetectedFileType] = useState<'master' | 'policy' | null>(null);
+  const [notification, setNotification] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'info';
+  }>({
+    open: false,
+    message: '',
+    severity: 'info',
+  });
+
+  // Function to detect file type based on content
+  const detectFileType = async (file: File): Promise<'master' | 'policy'> => 
+    new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target?.result as string;
+        
+        // Check if it's a policy file by looking for policy-specific columns
+        if (content.includes('Policy No') || content.includes('Customer Name') || 
+            content.includes('applicationNo') || content.includes('policyNo')) {
+          resolve('policy');
+        } else {
+          // Default to master if it has master-specific columns
+          resolve('master');
+        }
+      };
+      reader.readAsText(file);
+    });
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -37,34 +70,87 @@ export default function UploadMasterFileDialog({
     }
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      setUploadedFile(e.dataTransfer.files[0]);
+      const file = e.dataTransfer.files[0];
+      console.log('File dropped:', file);
+      console.log('File size:', file.size);
+      console.log('File type:', file.type);
+      
+      // Detect file type
+      const fileType = await detectFileType(file);
+      setDetectedFileType(fileType);
+      setUploadedFile(file);
     }
   }, []);
 
-  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileInput = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setUploadedFile(e.target.files[0]);
+      const file = e.target.files[0];
+      console.log('File selected:', file);
+      console.log('File size:', file.size);
+      console.log('File type:', file.type);
+      
+      // Detect file type
+      const fileType = await detectFileType(file);
+      setDetectedFileType(fileType);
+      setUploadedFile(file);
     }
   }, []);
 
-  const handleUpload = () => {
-    if (uploadedFile) {
+  const handleUpload = async () => {
+    if (uploadedFile && detectedFileType) {
+      console.log('Starting upload for file:', uploadedFile);
+      console.log('File type detected:', detectedFileType);
+      console.log('File size before upload:', uploadedFile.size);
+      
       setIsUploading(true);
-      console.log('Uploading file:', uploadedFile.name);
-      if (onFileUploaded) {
-        onFileUploaded(uploadedFile.name);
-      }
-      setTimeout(() => {
-        onOpenChange(false);
-        setUploadedFile(null);
+      try {
+        let response;
+        let message;
+        
+        if (detectedFileType === 'policy') {
+          // Upload to policy API using commission endpoint (no auth required)
+          response = await commissionPolicyAPI.uploadCSV(uploadedFile);
+          message = `Successfully uploaded ${response.totalProcessed} policy records!`;
+        } else {
+          // Upload to master API
+          response = await masterAPI.uploadCSV(uploadedFile);
+          message = `Successfully uploaded ${response.count} master records!`;
+        }
+        
+        console.log('Upload response:', response);
+        
+        setNotification({
+          open: true,
+          message,
+          severity: 'success',
+        });
+
+        if (onFileUploaded) {
+          onFileUploaded(uploadedFile.name, detectedFileType);
+        }
+
+        // Close dialog after successful upload
+        setTimeout(() => {
+          onOpenChange(false);
+          setUploadedFile(null);
+          setDetectedFileType(null);
+          setIsUploading(false);
+        }, 2000);
+      } catch (error) {
+        console.error('Upload failed:', error);
+        setNotification({
+          open: true,
+          message: error instanceof Error ? error.message : 'Upload failed. Please try again.',
+          severity: 'error',
+        });
         setIsUploading(false);
-      }, 1000);
+      }
     }
   };
 
@@ -72,7 +158,12 @@ export default function UploadMasterFileDialog({
     if (!isUploading) {
       onOpenChange(false);
       setUploadedFile(null);
+      setDetectedFileType(null);
     }
+  };
+
+  const handleCloseNotification = () => {
+    setNotification(prev => ({ ...prev, open: false }));
   };
 
   return (
@@ -80,14 +171,20 @@ export default function UploadMasterFileDialog({
       <DialogTitle sx={{ pb: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <CloudUpload color="primary" />
-          Upload Master File
+          Upload File (Master or Policy)
         </Box>
       </DialogTitle>
       
       <DialogContent sx={{ pt: 2 }}>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Upload your master file to begin the reconciliation process. Supported formats: CSV, Excel, TXT
+          Upload your master or policy file. The system will automatically detect the file type and route it to the appropriate database.
         </Typography>
+
+        {detectedFileType && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            File type detected: <strong>{detectedFileType === 'policy' ? 'Policy File' : 'Master File'}</strong>
+          </Alert>
+        )}
 
         <Paper
           variant="outlined"
@@ -128,12 +225,18 @@ export default function UploadMasterFileDialog({
                 <Typography variant="body2" color="text.secondary">
                   {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
                 </Typography>
+                {detectedFileType && (
+                  <Typography variant="caption" color="primary.main" sx={{ fontWeight: 600 }}>
+                    Type: {detectedFileType === 'policy' ? 'Policy' : 'Master'}
+                  </Typography>
+                )}
               </Box>
               <Button
                 size="small"
                 onClick={(e) => {
                   e.stopPropagation();
                   setUploadedFile(null);
+                  setDetectedFileType(null);
                 }}
                 sx={{ minWidth: 'auto', p: 0.5 }}
               >
@@ -149,11 +252,20 @@ export default function UploadMasterFileDialog({
               <Typography variant="body2" color="text.secondary">
                 or click to browse files
               </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                Supports: Master files (Product rates) and Policy files (Customer data)
+              </Typography>
             </Box>
           )}
         </Paper>
-      </DialogContent>
 
+        {detectedFileType === 'policy' && (
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            <strong>Note:</strong> Policy files require master data to exist first. Make sure you have uploaded master data before uploading policies.
+          </Alert>
+        )}
+      </DialogContent>
+      
       <DialogActions sx={{ px: 3, pb: 3 }}>
         <Button onClick={handleClose} disabled={isUploading}>
           Cancel
@@ -162,11 +274,26 @@ export default function UploadMasterFileDialog({
           onClick={handleUpload}
           variant="contained"
           disabled={!uploadedFile || isUploading}
-          startIcon={isUploading ? <CircularProgress size={16} /> : null}
+          startIcon={isUploading ? <CircularProgress size={16} /> : <CloudUpload />}
         >
-          {isUploading ? 'Uploading...' : 'Upload'}
+          {isUploading ? 'Uploading...' : `Upload ${detectedFileType === 'policy' ? 'Policy' : 'Master'} File`}
         </Button>
       </DialogActions>
+
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={handleCloseNotification}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={handleCloseNotification}
+          severity={notification.severity}
+          sx={{ width: '100%' }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
     </Dialog>
   );
 }

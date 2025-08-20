@@ -31,16 +31,21 @@ const upload = multer({
   }
 });
 
-// Policy routes
-router.post('/', createPolicy);
+// Policy routes - READ operations (no auth required for commission section)
 router.get('/', getPolicies);
 router.get('/search', searchPolicies);
 router.get('/stats', getPolicyStats);
 router.get('/:id', getPolicyById);
-router.put('/:id', updatePolicy);
-router.delete('/:id', deletePolicy);
 
-// CSV Upload route
+// Policy routes - WRITE operations (protected - require authentication)
+router.post('/', protect, createPolicy);
+router.put('/:id', protect, updatePolicy);
+router.delete('/:id', protect, deletePolicy);
+
+// CSV Upload route - Protected (require authentication)
 router.post('/upload', protect, upload.single('file'), uploadPolicies);
+
+// CSV Upload route for Commission section - No authentication required
+router.post('/upload-commission', upload.single('file'), uploadPolicies);
 
 export default router;

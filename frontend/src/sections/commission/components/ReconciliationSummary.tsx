@@ -18,6 +18,8 @@ import { TrendingUp, Assessment, Description, TrendingDown } from '@mui/icons-ma
 interface SummaryData {
   masterFileCount: number;
   masterFileAmount: number;
+  policyFileCount: number;
+  policyFileAmount: number;
   vendorFileCount: number;
   vendorFileAmount: number;
   delta: number;
@@ -53,6 +55,20 @@ export default function ReconciliationSummary({ summaryData }: ReconciliationSum
       trend: 'up',
     },
     {
+      title: 'Policy File Count',
+      value: summaryData.policyFileCount,
+      icon: Description,
+      color: 'warning.main',
+      trend: 'up',
+    },
+    {
+      title: 'Policy File Amount',
+      value: formatCurrency(summaryData.policyFileAmount),
+      icon: TrendingUp,
+      color: 'warning.main',
+      trend: 'up',
+    },
+    {
       title: 'Vendor File Count',
       value: summaryData.vendorFileCount,
       icon: Description,
@@ -78,6 +94,8 @@ export default function ReconciliationSummary({ summaryData }: ReconciliationSum
   // Calculate reconciliation reports based on actual data
   const masterFiles = summaryData.masterFileCount;
   const masterAmount = summaryData.masterFileAmount;
+  const policyFiles = summaryData.policyFileCount;
+  const policyAmount = summaryData.policyFileAmount;
   const vendorFiles = summaryData.vendorFileCount;
   const vendorAmount = summaryData.vendorFileAmount;
   const totalDelta = summaryData.delta;
@@ -87,6 +105,8 @@ export default function ReconciliationSummary({ summaryData }: ReconciliationSum
       reportType: 'Missing',
       masterFileCount: Math.floor(masterFiles * 0.3), // 30% of master files
       masterFileAmount: Math.floor(masterAmount * 0.25), // 25% of master amount
+      policyFileCount: Math.floor(policyFiles * 0.25), // 25% of policy files
+      policyFileAmount: Math.floor(policyAmount * 0.2), // 20% of policy amount
       vendorFileCount: Math.floor(vendorFiles * 0.2), // 20% of vendor files
       vendorFileAmount: Math.floor(vendorAmount * 0.15), // 15% of vendor amount
       delta: Math.floor(masterAmount * 0.25) - Math.floor(vendorAmount * 0.15),
@@ -95,6 +115,8 @@ export default function ReconciliationSummary({ summaryData }: ReconciliationSum
       reportType: 'Matched',
       masterFileCount: Math.floor(masterFiles * 0.6), // 60% of master files
       masterFileAmount: Math.floor(masterAmount * 0.65), // 65% of master amount
+      policyFileCount: Math.floor(policyFiles * 0.65), // 65% of policy files
+      policyFileAmount: Math.floor(policyAmount * 0.7), // 70% of policy amount
       vendorFileCount: Math.floor(vendorFiles * 0.7), // 70% of vendor files
       vendorFileAmount: Math.floor(vendorAmount * 0.75), // 75% of vendor amount
       delta: 0, // Matched should have zero delta
@@ -103,6 +125,8 @@ export default function ReconciliationSummary({ summaryData }: ReconciliationSum
       reportType: 'Surplus',
       masterFileCount: Math.floor(masterFiles * 0.05), // 5% of master files
       masterFileAmount: Math.floor(masterAmount * 0.08), // 8% of master amount
+      policyFileCount: Math.floor(policyFiles * 0.05), // 5% of policy files
+      policyFileAmount: Math.floor(policyAmount * 0.08), // 8% of policy amount
       vendorFileCount: Math.floor(vendorFiles * 0.08), // 8% of vendor files
       vendorFileAmount: Math.floor(vendorAmount * 0.09), // 9% of vendor amount
       delta: Math.floor(masterAmount * 0.08) - Math.floor(vendorAmount * 0.09),
@@ -111,6 +135,8 @@ export default function ReconciliationSummary({ summaryData }: ReconciliationSum
       reportType: 'Deficit',
       masterFileCount: Math.floor(masterFiles * 0.05), // 5% of master files
       masterFileAmount: Math.floor(masterAmount * 0.02), // 2% of master amount
+      policyFileCount: Math.floor(policyFiles * 0.05), // 5% of policy files
+      policyFileAmount: Math.floor(policyAmount * 0.02), // 2% of policy amount
       vendorFileCount: Math.floor(vendorFiles * 0.02), // 2% of vendor files
       vendorFileAmount: Math.floor(vendorAmount * 0.01), // 1% of vendor amount
       delta: Math.floor(masterAmount * 0.02) - Math.floor(vendorAmount * 0.01),
@@ -122,7 +148,7 @@ export default function ReconciliationSummary({ summaryData }: ReconciliationSum
       {/* Summary Cards */}
       <Box sx={{ 
         display: 'grid', 
-        gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(5, 1fr)' },
+        gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(4, 1fr)', xl: 'repeat(7, 1fr)' },
         gap: 3, 
         mb: 4 
       }}>
@@ -205,6 +231,8 @@ export default function ReconciliationSummary({ summaryData }: ReconciliationSum
                     <TableCell sx={{ fontWeight: 600 }}>Report Type</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Master File Count</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Master File Amount</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Policy File Count</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Policy File Amount</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Vendor File Count</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Vendor File Amount</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Delta</TableCell>
@@ -231,6 +259,8 @@ export default function ReconciliationSummary({ summaryData }: ReconciliationSum
                       </TableCell>
                       <TableCell>{formatNumber(report.masterFileCount)}</TableCell>
                       <TableCell>₹{formatNumber(report.masterFileAmount)}</TableCell>
+                      <TableCell>{formatNumber(report.policyFileCount)}</TableCell>
+                      <TableCell>₹{formatNumber(report.policyFileAmount)}</TableCell>
                       <TableCell>{formatNumber(report.vendorFileCount)}</TableCell>
                       <TableCell>₹{formatNumber(report.vendorFileAmount)}</TableCell>
                       <TableCell>
@@ -246,7 +276,7 @@ export default function ReconciliationSummary({ summaryData }: ReconciliationSum
                         <Button
                           variant="outlined"
                           size="small"
-                          disabled={report.masterFileCount === 0 && report.vendorFileCount === 0}
+                          disabled={report.masterFileCount === 0 && report.policyFileCount === 0 && report.vendorFileCount === 0}
                         >
                           Generate Report
                         </Button>

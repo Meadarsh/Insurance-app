@@ -131,7 +131,13 @@ export default function CommissionTable({ data }: CommissionTableProps) {
                   <Chip
                     label={record.source}
                     size="small"
-                    color={record.source === 'Master' ? 'primary' : 'secondary'}
+                    color={
+                      record.source === 'Master' 
+                        ? 'primary' 
+                        : record.source === 'Policy' 
+                        ? 'warning' 
+                        : 'secondary'
+                    }
                     variant="outlined"
                   />
                 </TableCell>
