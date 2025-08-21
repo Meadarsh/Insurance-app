@@ -6,7 +6,7 @@ import masterModel from '../models/master.model.js';
 // Create a new policy
 export const createPolicy = async (req, res) => {
   try {
-    const policy = new Policy(req.body, { userId: req.user?._id });
+    const policy = new Policy({ ...req.body, userId: req.user._id });
     await policy.save();
     res.status(201).json(policy);
   } catch (error) {
@@ -21,12 +21,12 @@ export const getPolicies = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const policies = await Policy.find()
+    const policies = await Policy.find({ userId: req.user._id })
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 });
 
-    const total = await Policy.countDocuments();
+    const total = await Policy.countDocuments({ userId: req.user._id });
     
     res.json({
       data: policies,
@@ -45,7 +45,7 @@ export const getPolicies = async (req, res) => {
 // Get a single policy by ID
 export const getPolicyById = async (req, res) => {
   try {
-    const policy = await Policy.findById(req.params.id);
+    const policy = await Policy.findOne({ _id: req.params.id, userId: req.user._id });
     if (!policy) {
       return res.status(404).json({ message: 'Policy not found' });
     }
@@ -58,8 +58,8 @@ export const getPolicyById = async (req, res) => {
 // Update a policy
 export const updatePolicy = async (req, res) => {
   try {
-    const policy = await Policy.findByIdAndUpdate(
-      req.params.id,
+    const policy = await Policy.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user._id },
       req.body,
       { new: true, runValidators: true }
     );
@@ -75,13 +75,13 @@ export const updatePolicy = async (req, res) => {
 // Delete a policy
 export const deletePolicy = async (req, res) => {
   try {
-    const policy = await Policy.findByIdAndDelete(req.params.id);
+    const policy = await Policy.findOneAndDelete({ _id: req.params.id, userId: req.user._id });
     if (!policy) {
       return res.status(404).json({ message: 'Policy not found' });
     }
     res.json({ message: 'Policy deleted successfully' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(400).json({ message: error.message });
   }
 };
 
@@ -258,7 +258,7 @@ export const searchPolicies = async (req, res) => {
     }
 
     const policies = await Policy.find({
-      userId: req.user?._id,
+      userId: req.user._id,
       $or: [
         { policyNo: { $regex: query, $options: 'i' } },
         { applicationNo: { $regex: query, $options: 'i' } },
@@ -278,6 +278,9 @@ export const searchPolicies = async (req, res) => {
 export const getPolicyStats = async (req, res) => {
   try {
     const stats = await Policy.aggregate([
+      {
+        $match: { userId: req.user._id }
+      },
       {
         $group: {
           _id: null,
