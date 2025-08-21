@@ -5,8 +5,7 @@ import fs from 'fs';
 // Create a new master record
 export const createMaster = async (req, res) => {
   try {
-    // Use a default user ID or make userId optional
-    const userId = req.user?._id || '000000000000000000000000'; // Default ObjectId
+    const userId = req.user._id;
     const master = await Master.create({ ...req.body, userId });
     res.status(201).json({ success: true, data: master });
   } catch (error) {
@@ -17,8 +16,7 @@ export const createMaster = async (req, res) => {
 // Get all master records
 export const getMasters = async (req, res) => {
   try {
-    // Get all masters without user filtering for now
-    const masters = await Master.find().sort({ createdAt: -1 });
+    const masters = await Master.find({ userId: req.user._id }).sort({ createdAt: -1 });
     res.status(200).json({ success: true, count: masters.length, data: masters });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
@@ -28,7 +26,7 @@ export const getMasters = async (req, res) => {
 // Get single master record
 export const getMaster = async (req, res) => {
   try {
-    const master = await Master.findById(req.params.id).populate('userId');
+    const master = await Master.findOne({ _id: req.params.id, userId: req.user._id }).populate('userId');
     if (!master) {
       return res.status(404).json({ success: false, error: 'Master record not found' });
     }
@@ -41,8 +39,8 @@ export const getMaster = async (req, res) => {
 // Update master record
 export const updateMaster = async (req, res) => {
   try {
-    const master = await Master.findByIdAndUpdate(
-      req.params.id,
+    const master = await Master.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user._id },
       req.body,
       { new: true, runValidators: true }
     );
@@ -58,7 +56,7 @@ export const updateMaster = async (req, res) => {
 // Delete master record
 export const deleteMaster = async (req, res) => {
   try {
-    const master = await Master.findByIdAndDelete(req.params.id);
+    const master = await Master.findOneAndDelete({ _id: req.params.id, userId: req.user._id });
     if (!master) {
       return res.status(404).json({ success: false, error: 'Master record not found' });
     }
@@ -125,7 +123,7 @@ export const uploadCSV = async (req, res) => {
                 totalRate: Number(String(data['Total Rate'] || 0).replace('%', '')) || 0,
                 commission: Number(String(data['Commission'] || 0).replace('%', '')) || 0,
                 reward: Number(String(data['Reward'] || 0).replace('%', '')) || 0,
-                userId: req.user?._id || '000000000000000000000000' // Default ObjectId
+                userId: req.user._id
               };
               results.push(masterData);
             } catch (rowError) {
