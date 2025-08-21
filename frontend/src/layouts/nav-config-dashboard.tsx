@@ -53,9 +53,4 @@ export const navData = [
     path: '/additional',
     icon: icon('ic-additional'),
   },
-  {
-    title: 'Not found',
-    path: '/404',
-    icon: icon('ic-disabled'),
-  },
 ];

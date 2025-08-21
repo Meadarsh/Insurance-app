@@ -15,7 +15,24 @@ const masterSchema = new mongoose.Schema({
   totalRate: { type: Number },    // in %                            
   commission: { type: Number },   // in %                            
   reward: { type: Number },       // in %        
-  userId: { type: String, default: '000000000000000000000000' }, // Changed to String with default                    
-}, { timestamps: true });
+  userId: { type: String, default: '000000000000000000000000' }, // Changed to String with default     
+  fileUpload: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'FileUpload',
+    default: null
+  }                   
+}, { 
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
+// Virtual for file upload details
+masterSchema.virtual('fileDetails', {
+  ref: 'FileUpload',
+  localField: 'fileUpload',
+  foreignField: '_id',
+  justOne: true
+});
 
 export default mongoose.model("Master", masterSchema);

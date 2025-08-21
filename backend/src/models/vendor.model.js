@@ -68,7 +68,12 @@ const VendorSchema = new mongoose.Schema({
   branchLocation: { type: String }, // Alias for branchName
   totalSumAssured: { type: Number }, // Alias for sumAssured
   vendorType: { type: String }, // Alias for agentType
-  agentBranchCode: { type: String } // Alias for branchCode
+  agentBranchCode: { type: String }, // Alias for branchCode
+  fileUpload: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'FileUpload',
+    default: null
+  }
 }, {
   timestamps: true, // Adds createdAt & updatedAt
   toJSON: { virtuals: true },
@@ -85,6 +90,14 @@ VendorSchema.virtual('policyStatus').get(function() {
     'M': 'Matured'
   };
   return statusMap[this.CHDRSTCDB] || 'Unknown';
+});
+
+// Virtual for file upload details
+VendorSchema.virtual('fileDetails', {
+  ref: 'FileUpload',
+  localField: 'fileUpload',
+  foreignField: '_id',
+  justOne: true
 });
 
 // Create and export model

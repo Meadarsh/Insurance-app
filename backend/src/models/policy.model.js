@@ -56,6 +56,24 @@ const policySchema = new mongoose.Schema({
   commission: { type: Number },                              
   reward: { type: Number },
   masterRef: { type: mongoose.Schema.Types.ObjectId, ref: "Master" },
-}, { timestamps: true });
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  fileUpload: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'FileUpload',
+    default: null
+  }
+}, { 
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
+// Virtual for file upload details
+policySchema.virtual('fileDetails', {
+  ref: 'FileUpload',
+  localField: 'fileUpload',
+  foreignField: '_id',
+  justOne: true
+});
 
 export default mongoose.model("Policy", policySchema);

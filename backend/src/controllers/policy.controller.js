@@ -6,7 +6,7 @@ import masterModel from '../models/master.model.js';
 // Create a new policy
 export const createPolicy = async (req, res) => {
   try {
-    const policy = new Policy(req.body);
+    const policy = new Policy(req.body, { userId: req.user?._id });
     await policy.save();
     res.status(201).json(policy);
   } catch (error) {
@@ -114,7 +114,9 @@ export const uploadPolicies = async (req, res) => {
       return res.status(400).json({ message: "No file uploaded" });
     }
 
-    const masterData = await masterModel.find({ userId: req.user?._id || '000000000000000000000000' });
+    const masterData = await masterModel.find({ userId: req.user?._id});
+    console.log(masterData);
+    
     if (!masterData || masterData.length === 0) {
       return res.status(404).json({ message: "Master records not found" });
     }
@@ -157,6 +159,7 @@ export const uploadPolicies = async (req, res) => {
               transactionDateFinal: data["Transaction Date Final"] ? parseDate(data["Transaction Date Final"]) : null,
               transactionDate: data["Transaction Date"] ? parseDate(data["Transaction Date"]) : (data.transactionDate ? parseDate(data.transactionDate) : null),
               cancellationDate: data["Cancellation Date"] ? parseDate(data["Cancellation Date"]) : null,
+              userId: req.user?._id,
             };
             results.push(processedData);
           })
@@ -255,6 +258,7 @@ export const searchPolicies = async (req, res) => {
     }
 
     const policies = await Policy.find({
+      userId: req.user?._id,
       $or: [
         { policyNo: { $regex: query, $options: 'i' } },
         { applicationNo: { $regex: query, $options: 'i' } },

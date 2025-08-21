@@ -1,3 +1,4 @@
+import ApiInstance from "./api.instance";
 
 
 export interface PolicyData {
@@ -248,17 +249,19 @@ export const commissionPolicyAPI = {
     const formData = new FormData();
     formData.append('file', file);
     
-    const response = await fetch(`${baseURL}/policies/upload-commission`, {
-      method: 'POST',
-      body: formData,
-    });
+    const response:any = await ApiInstance.post(`${baseURL}/policies/upload`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
     
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    if (!response) {
+      throw new Error(`Upload failed! status: ${response.status}`);
     }
     
-    return response.json();
+    return response;
   },
 };
 
