@@ -9,6 +9,7 @@ import {
   uploadVendors,
   searchVendors
 } from '../controllers/vendor.controller.js';
+import protect from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -21,7 +22,7 @@ const upload = multer({
   },
   fileFilter: (req, file, cb) => {
     if (file.mimetype === 'text/csv' || 
-        file.mimetype === 'application/vnd.ms-excel' || 
+        file.mimetype === 'text/csv' || 
         file.originalname.endsWith('.csv')) {
       cb(null, true);
     } else {
@@ -30,15 +31,15 @@ const upload = multer({
   }
 });
 
-// Vendor routes
-router.post('/', createVendor);
-router.get('/', getVendors);
-router.get('/search', searchVendors);
-router.get('/:id', getVendorById);
-router.put('/:id', updateVendor);
-router.delete('/:id', deleteVendor);
+// Vendor routes - Protected with authentication
+router.post('/', protect, createVendor);
+router.get('/', protect, getVendors);
+router.get('/search', protect, searchVendors);
+router.get('/:id', protect, getVendorById);
+router.put('/:id', protect, updateVendor);
+router.delete('/:id', protect, deleteVendor);
 
-// CSV Upload route
-router.post('/upload', upload.single('file'), uploadVendors);
+// CSV Upload route - Protected
+router.post('/upload', protect, upload.single('file'), uploadVendors);
 
 export default router;

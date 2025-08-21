@@ -5,7 +5,7 @@ import { Readable } from 'stream';
 // Create a new vendor
 export const createVendor = async (req, res) => {
   try {
-    const vendor = new Vendor(req.body);
+    const vendor = new Vendor({ ...req.body, userId: req.user._id });
     await vendor.save();
     res.status(201).json(vendor);
   } catch (error) {
@@ -20,12 +20,12 @@ export const getVendors = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const vendors = await Vendor.find()
+    const vendors = await Vendor.find({ userId: req.user._id })
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 });
 
-    const total = await Vendor.countDocuments();
+    const total = await Vendor.countDocuments({ userId: req.user._id });
     
     res.json({
       data: vendors,
@@ -44,7 +44,7 @@ export const getVendors = async (req, res) => {
 // Get a single vendor by ID
 export const getVendorById = async (req, res) => {
   try {
-    const vendor = await Vendor.findById(req.params.id);
+    const vendor = await Vendor.findOne({ _id: req.params.id, userId: req.user._id });
     if (!vendor) {
       return res.status(404).json({ message: 'Vendor not found' });
     }
@@ -57,8 +57,8 @@ export const getVendorById = async (req, res) => {
 // Update a vendor
 export const updateVendor = async (req, res) => {
   try {
-    const vendor = await Vendor.findByIdAndUpdate(
-      req.params.id,
+    const vendor = await Vendor.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user._id },
       req.body,
       { new: true, runValidators: true }
     );
@@ -74,13 +74,13 @@ export const updateVendor = async (req, res) => {
 // Delete a vendor
 export const deleteVendor = async (req, res) => {
   try {
-    const vendor = await Vendor.findByIdAndDelete(req.params.id);
+    const vendor = await Vendor.findOneAndDelete({ _id: req.params.id, userId: req.user._id });
     if (!vendor) {
       return res.status(404).json({ message: 'Vendor not found' });
     }
     res.json({ message: 'Vendor deleted successfully' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(400).json({ message: error.message });
   }
 };
 
@@ -181,7 +181,7 @@ export const uploadVendors = async (req, res) => {
         return {
           updateOne: {
             filter,
-            update: { $set: vendor },
+            update: { $set: { ...vendor, userId: req.user._id } }, // Add userId to the bulk operation
             upsert: true
           }
         };
@@ -225,6 +225,7 @@ export const searchVendors = async (req, res) => {
     }
 
     const vendors = await Vendor.find({
+      userId: req.user._id,
       $or: [
         { payeeName: { $regex: query, $options: 'i' } },
         { agentName: { $regex: query, $options: 'i' } },
