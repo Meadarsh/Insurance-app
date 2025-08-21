@@ -15,7 +15,7 @@ const masterSchema = new mongoose.Schema({
   totalRate: { type: Number },    // in %                            
   commission: { type: Number },   // in %                            
   reward: { type: Number },       // in %        
-  userId: { type: String, default: '000000000000000000000000' }, // Changed to String with default     
+  userId: { type: String, required: true }, // Changed to String with default     
   fileUpload: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'FileUpload',

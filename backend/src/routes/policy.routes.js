@@ -32,15 +32,15 @@ const upload = multer({
 });
 
 // Policy routes - READ operations (no auth required for commission section)
-router.get('/', getPolicies);
-router.get('/search', searchPolicies);
-router.get('/stats', getPolicyStats);
-router.get('/:id', getPolicyById);
+router.get('/get', protect, getPolicies);
+router.get('/search', protect, searchPolicies);
+router.get('/stats', protect, getPolicyStats);
+router.get('/:id', protect, getPolicyById);
 
 // Policy routes - WRITE operations (protected - require authentication)
 router.post('/', protect, createPolicy);
-router.put('/:id', protect, updatePolicy);
-router.delete('/:id', protect, deletePolicy);
+router.put('/update/:id', protect, updatePolicy);
+router.delete('/delete/:id', protect, deletePolicy);
 
 // CSV Upload route - Protected (require authentication)
 router.post('/upload', protect, upload.single('file'), uploadPolicies);

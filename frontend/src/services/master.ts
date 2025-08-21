@@ -1,59 +1,4 @@
-
-
-// Create a non-authenticated API instance for master operations
-const createMasterApiInstance = () => {
-  const baseURL = 'http://localhost:3001/api';
-  
-  return {
-    get: async (endpoint: string) => {
-      const response = await fetch(`${baseURL}${endpoint}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return response.json();
-    },
-    
-    post: async (endpoint: string, data?: any) => {
-      const config: RequestInit = {
-        method: 'POST',
-        headers: {
-          'Content-Type': data instanceof FormData ? 'multipart/form-data' : 'application/json',
-        },
-        body: data instanceof FormData ? data : JSON.stringify(data),
-      };
-      
-      const response = await fetch(`${baseURL}${endpoint}`, config);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return response.json();
-    },
-    
-    put: async (endpoint: string, data: any) => {
-      const response = await fetch(`${baseURL}${endpoint}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return response.json();
-    },
-    
-    delete: async (endpoint: string) => {
-      const response = await fetch(`${baseURL}${endpoint}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return response.json();
-    },
-  };
-};
+import ApiInstance from "./api.instance";
 
 export interface MasterData {
   _id?: string;
@@ -97,56 +42,46 @@ export interface MasterResponse {
 export const masterAPI = {
   // Get all master records
   getMasters: async (): Promise<MastersResponse> => {
-    const api = createMasterApiInstance();
-    const response = await api.get('/masters/get');
-    return response;
+    const response = await ApiInstance.get('/masters/get');
+    return response.data;
   },
 
   // Get single master record
   getMaster: async (id: string): Promise<MasterResponse> => {
-    const api = createMasterApiInstance();
-    const response = await api.get(`/masters/get/${id}`);
-    return response;
+    const response = await ApiInstance.get(`/masters/get/${id}`);
+    return response.data;
   },
 
   // Create new master record
   createMaster: async (masterData: Omit<MasterData, '_id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<MasterResponse> => {
-    const api = createMasterApiInstance();
-    const response = await api.post('/masters/create', masterData);
-    return response;
+    const response = await ApiInstance.post('/masters/create', masterData);
+    return response.data;
   },
 
   // Update master record
   updateMaster: async (id: string, masterData: Partial<MasterData>): Promise<MasterResponse> => {
-    const api = createMasterApiInstance();
-    const response = await api.put(`/masters/update/${id}`, masterData);
-    return response;
+    const response = await ApiInstance.put(`/masters/update/${id}`, masterData);
+    return response.data;
   },
 
   // Delete master record
   deleteMaster: async (id: string): Promise<{ success: boolean; data: {} }> => {
-    const api = createMasterApiInstance();
-    const response = await api.delete(`/masters/delete/${id}`);
-    return response;
+    const response = await ApiInstance.delete(`/masters/delete/${id}`);
+    return response.data;
   },
 
   // Upload CSV file
   uploadCSV: async (file: File): Promise<UploadResponse> => {
-    const baseURL = 'http://localhost:3001/api';
     const formData = new FormData();
     formData.append('file', file);
     
-    const response = await fetch(`${baseURL}/masters/upload-csv`, {
-      method: 'POST',
-      body: formData,
+    const response = await ApiInstance.post('/masters/upload-csv', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
     });
     
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-    }
-    
-    return response.json();
+    return response.data;
   },
 };
 
