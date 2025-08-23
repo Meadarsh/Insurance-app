@@ -1,0 +1,248 @@
+/* 
+ * Insurance App Color Variables - Optimized for 1-2 Colors Only
+ * As requested by Adarsh: Limited color scheme (1-2 colors) for best visual experience
+ * 
+ * Primary Color: Blue (#1976D2) - Main brand color
+ * Secondary Color: Purple (#9C27B0) - Accent color only
+ * 
+ * All other colors are derived from these two base colors for consistency
+ */
+
+:root {
+  /* Primary Color - Blue (Main brand color) */
+  --primary-lighter: #E3F2FD;
+  --primary-light: #64B5F6;
+  --primary-main: #1976D2;
+  --primary-dark: #0D47A1;
+  --primary-darker: #0A3D91;
+  --primary-contrast: #FFFFFF;
+
+  /* Secondary Color - Purple (Accent only) */
+  --secondary-lighter: #F3E5F5;
+  --secondary-light: #BA68C8;
+  --secondary-main: #9C27B0;
+  --secondary-dark: #7B1FA2;
+  --secondary-darker: #6A1B9A;
+  --secondary-contrast: #FFFFFF;
+
+  /* Derived Colors - All based on primary blue for consistency */
+  --info-lighter: #E3F2FD;
+  --info-light: #64B5F6;
+  --info-main: #1976D2;
+  --info-dark: #0D47A1;
+  --info-darker: #0A3D91;
+  --info-contrast: #FFFFFF;
+
+  /* Success - Blue variations */
+  --success-lighter: #E3F2FD;
+  --success-light: #64B5F6;
+  --success-main: #1976D2;
+  --success-dark: #0D47A1;
+  --success-darker: #0A3D91;
+  --success-contrast: #FFFFFF;
+
+  /* Warning - Blue variations */
+  --warning-lighter: #E3F2FD;
+  --warning-light: #64B5F6;
+  --warning-main: #1976D2;
+  --warning-dark: #0D47A1;
+  --warning-darker: #0A3D91;
+  --warning-contrast: #FFFFFF;
+
+  /* Error - Blue variations */
+  --error-lighter: #E3F2FD;
+  --error-light: #64B5F6;
+  --error-main: #1976D2;
+  --error-dark: #0D47A1;
+  --error-darker: #0A3D91;
+  --error-contrast: #FFFFFF;
+
+  /* Custom Dashboard Colors - Based on primary blue */
+  --dashboard-bg: #FAFAFA;
+  --dashboard-card-bg: #FFFFFF;
+  --dashboard-border: #E3F2FD;
+  --dashboard-shadow: rgba(25, 118, 210, 0.1);
+  --dashboard-text-primary: #0D47A1;
+  --dashboard-text-secondary: #1976D2;
+  
+  /* Custom Component Colors - Only blue and purple */
+  --custom-accent: #1976D2;
+  --custom-success: #1976D2;
+  --custom-warning: #1976D2;
+  --custom-error: #1976D2;
+  --custom-secondary: #9C27B0;
+  
+  /* Sidebar-specific colors for enhanced navigation */
+  --sidebar-bg: #FAFBFF;
+  --sidebar-border: #E8F4FD;
+  --sidebar-shadow: rgba(25, 118, 210, 0.08);
+  --sidebar-item-hover: rgba(25, 118, 210, 0.06);
+  --sidebar-item-active: #1976D2;
+  --sidebar-item-active-dark: #0D47A1;
+  --sidebar-item-active-text: #FFFFFF;
+  --sidebar-item-inactive: #5A6A85;
+  --sidebar-item-inactive-icon: #1976D2;
+  --sidebar-badge-bg: rgba(25, 118, 210, 0.15);
+  --sidebar-badge-text: #1976D2;
+  
+  /* Enhanced sidebar section colors */
+  --sidebar-header-bg: linear-gradient(135deg, #1976D2 0%, #1565C0 100%);
+  --sidebar-section-bg: #F8FAFF;
+  --sidebar-divider: #E3F2FD;
+  --sidebar-item-border: #F0F7FF;
+  --sidebar-hover-glow: rgba(25, 118, 210, 0.12);
+  --sidebar-active-glow: rgba(25, 118, 210, 0.25);
+}
+
+/* Alternative Minimal Color Schemes - Uncomment to use */
+
+/* 
+ * Blue Only Theme (Most Minimal - 1 Color)
+ * Primary: Blue (#1976D2) - Everything in blue
+ */
+/*
+:root {
+  --primary-lighter: #E3F2FD;
+  --primary-light: #64B5F6;
+  --primary-main: #1976D2;
+  --primary-dark: #0D47A1;
+  --primary-darker: #0A3D91;
+  --primary-contrast: #FFFFFF;
+  
+  --secondary-lighter: #E3F2FD;
+  --secondary-light: #64B5F6;
+  --secondary-main: #1976D2;
+  --secondary-dark: #0D47A1;
+  --secondary-darker: #0A3D91;
+  --secondary-contrast: #FFFFFF;
+  
+  --info-lighter: #E3F2FD;
+  --info-light: #64B5F6;
+  --info-main: #1976D2;
+  --info-dark: #0D47A1;
+  --info-darker: #0A3D91;
+  --info-contrast: #FFFFFF;
+  
+  --success-lighter: #E3F2FD;
+  --success-light: #64B5F6;
+  --success-main: #1976D2;
+  --success-dark: #0D47A1;
+  --success-darker: #0A3D91;
+  --success-contrast: #FFFFFF;
+  
+  --warning-lighter: #E3F2FD;
+  --warning-light: #64B5F6;
+  --warning-main: #1976D2;
+  --warning-dark: #0D47A1;
+  --warning-darker: #0A3D91;
+  --warning-contrast: #FFFFFF;
+  
+  --error-lighter: #E3F2FD;
+  --error-light: #64B5F6;
+  --error-main: #1976D2;
+  --error-dark: #0D47A1;
+  --error-darker: #0A3D91;
+  --error-contrast: #FFFFFF;
+  
+  --custom-accent: #1976D2;
+  --custom-success: #1976D2;
+  --custom-warning: #1976D2;
+  --custom-error: #1976D2;
+  --custom-secondary: #1976D2;
+}
+*/
+
+/* 
+ * Purple Only Theme (Alternative 1 Color)
+ * Primary: Purple (#9C27B0) - Everything in purple
+ */
+/*
+:root {
+  --primary-lighter: #F3E5F5;
+  --primary-light: #BA68C8;
+  --primary-main: #9C27B0;
+  --primary-dark: #7B1FA2;
+  --primary-darker: #6A1B9A;
+  --primary-contrast: #FFFFFF;
+  
+  --secondary-lighter: #F3E5F5;
+  --secondary-light: #BA68C8;
+  --secondary-main: #9C27B0;
+  --secondary-dark: #7B1FA2;
+  --secondary-darker: #6A1B9A;
+  --secondary-contrast: #FFFFFF;
+  
+  --info-lighter: #F3E5F5;
+  --info-light: #BA68C8;
+  --info-main: #9C27B0;
+  --info-dark: #7B1FA2;
+  --info-darker: #6A1B9A;
+  --info-contrast: #FFFFFF;
+  
+  --success-lighter: #F3E5F5;
+  --success-light: #BA68C8;
+  --success-main: #9C27B0;
+  --success-dark: #7B1FA2;
+  --success-darker: #6A1B9A;
+  --success-contrast: #FFFFFF;
+  
+  --warning-lighter: #F3E5F5;
+  --warning-light: #BA68C8;
+  --warning-main: #9C27B0;
+  --warning-dark: #7B1FA2;
+  --warning-darker: #6A1B9A;
+  --warning-contrast: #FFFFFF;
+  
+  --error-lighter: #F3E5F5;
+  --error-light: #BA68C8;
+  --error-main: #9C27B0;
+  --error-dark: #7B1FA2;
+  --error-darker: #6A1B9A;
+  --error-contrast: #FFFFFF;
+  
+  --custom-accent: #9C27B0;
+  --custom-success: #9C27B0;
+  --custom-warning: #9C27B0;
+  --custom-error: #9C27B0;
+  --custom-secondary: #9C27B0;
+}
+*/
+
+/* Custom CSS classes that use the limited color scheme */
+.custom-primary-bg {
+  background-color: var(--primary-main);
+}
+
+.custom-secondary-bg {
+  background-color: var(--secondary-main);
+}
+
+.custom-accent-bg {
+  background-color: var(--custom-accent);
+}
+
+.custom-primary-text {
+  color: var(--primary-main);
+}
+
+.custom-secondary-text {
+  color: var(--secondary-main);
+}
+
+.custom-accent-text {
+  color: var(--custom-accent);
+}
+
+/* Dashboard-specific styling with limited colors */
+.dashboard-card {
+  border: 1px solid var(--dashboard-border);
+  box-shadow: 0 2px 8px var(--dashboard-shadow);
+}
+
+.dashboard-header {
+  color: var(--dashboard-text-primary);
+}
+
+.dashboard-subtitle {
+  color: var(--dashboard-text-secondary);
+}

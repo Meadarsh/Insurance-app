@@ -1,4 +1,5 @@
 import 'src/global.css';
+import 'src/theme/color-variables.css';
 
 import { useEffect } from 'react';
 

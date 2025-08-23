@@ -1,4 +1,3 @@
-import { Label } from 'src/components/label';
 import { SvgColor } from 'src/components/svg-color';
 
 // ----------------------------------------------------------------------
@@ -10,16 +9,18 @@ export type NavItem = {
   path: string;
   icon: React.ReactNode;
   info?: React.ReactNode;
+  badge?: string;
+  badgeColor?: 'primary' | 'secondary' | 'error' | 'warning' | 'info';
 };
 
-export const navData = [
+export const navData: NavItem[] = [
   {
     title: 'Dashboard',
     path: '/',
     icon: icon('ic-analytics'),
   },
   {
-    title: 'User',
+    title: 'User Management',
     path: '/user',
     icon: icon('ic-user'),
   },
@@ -27,11 +28,8 @@ export const navData = [
     title: 'Policies',
     path: '/policies',
     icon: icon('ic-cart'),
-    info: (
-      <Label color="error" variant="inverted">
-        +3
-      </Label>
-    ),
+    badge: '+3',
+    badgeColor: 'error',
   },
   {
     title: 'Commissions',

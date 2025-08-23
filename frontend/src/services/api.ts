@@ -3,7 +3,7 @@ import { policyAPI } from './policy';
 const API_BASE_URL = 'http://localhost:3001/api';
 
 // Generic API request function
-async function apiRequest<T>(
+export async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
