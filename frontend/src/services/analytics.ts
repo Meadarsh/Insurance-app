@@ -1,3 +1,5 @@
+import ApiInstance from "./api.instance";
+
 const API_BASE_URL = 'http://localhost:3001/api';
 
 // Cache for analytics data to reduce API calls
@@ -106,16 +108,16 @@ export const analyticsAPI = {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/analytics/dashboard`, {
+      const response = await ApiInstance.get(`${API_BASE_URL}/analytics/dashboard`, {
         // Add timeout to prevent hanging requests
         signal: AbortSignal.timeout(5000),
       });
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response) {
+        throw new Error(`HTTP error! status: ${response}`);
       }
       
-      const data = await response.json();
+      const data = await response.data;
       
       // Cache the successful response
       analyticsCache = data;
@@ -149,13 +151,13 @@ export const analyticsAPI = {
   // Get real-time data (only when needed)
   async getRealTimeData(): Promise<Partial<AnalyticsData>> {
     try {
-      const response = await fetch(`${API_BASE_URL}/analytics/realtime`);
+      const response = await ApiInstance.get(`${API_BASE_URL}/analytics/realtime`);
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response) {
+        throw new Error(`HTTP error! status: ${response}`);
       }
       
-      const data = await response.json();
+      const data = await response.data;
       
       // Update cache with new data
       if (analyticsCache) {
