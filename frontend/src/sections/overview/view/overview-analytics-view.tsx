@@ -40,9 +40,8 @@ export function OverviewAnalyticsView() {
       setError(null);
       setSuccess(null);
       
-      console.log('Dashboard: Fetching analytics data...');
       const data = await analyticsAPI.getDashboardAnalytics();
-      console.log('Dashboard: Analytics data received:', data);
+      
       setAnalyticsData(data);
       setRetryCount(0); // Reset retry count on success
       
@@ -96,7 +95,7 @@ export function OverviewAnalyticsView() {
             } : null);
           }
         } catch (err) {
-          console.warn('Failed to fetch real-time data:', err);
+          console.warn('Failed to fetch real-time data:', err instanceof Error ? err.message : 'Unknown error');
           // Don't show error for real-time updates, just log it
         }
       }

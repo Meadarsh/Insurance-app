@@ -4,10 +4,10 @@ import protect from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Protected routes (require authentication)
+// Protected route (requires authentication)
 router.get('/dashboard', protect, getDashboardAnalytics);
 
-// Temporary test route without authentication
+// Temporary test route without authentication - calls analytics logic directly
 router.get('/test', async (req, res) => {
   try {
     console.log('🔍 Test analytics endpoint called');
