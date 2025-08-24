@@ -1,5 +1,6 @@
 import { policyAPI } from './policy';
 import { analyticsAPI } from './analytics';
+import usersAPI from './users';
 
 const API_BASE_URL = 'http://localhost:3001/api';
 
@@ -97,5 +98,6 @@ export default {
   vendorAPI,
   policyAPI,
   analyticsAPI,
+  usersAPI,
   healthCheck,
 };
