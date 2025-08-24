@@ -46,7 +46,7 @@ export function NavDesktop({
     <Box
       sx={{
         pt: 2.5,
-        px: 1,
+        px: 2.5,
         top: 0,
         left: 0,
         height: 1,
@@ -123,7 +123,7 @@ export function NavContent({ data, slots, workspaces, sx }: NavContentProps) {
           p: 2,
           mb: 2,
           borderRadius: 2,
-          // background: 'var(--sidebar-header-bg)',
+          background: 'var(--sidebar-header-bg)',
         }}
       >
         <Logo />
@@ -136,10 +136,10 @@ export function NavContent({ data, slots, workspaces, sx }: NavContentProps) {
       {/* Navigation Section */}
       <Box
         sx={{
-          p: 1,
+          p: 1.5,
           borderRadius: 2,
-          // background: 'var(--sidebar-section-bg)',
-          // border: '1px solid var(--sidebar-divider)',
+          background: 'var(--sidebar-section-bg)',
+          border: '1px solid var(--sidebar-divider)',
           mb: 2,
         }}
       >
@@ -148,7 +148,7 @@ export function NavContent({ data, slots, workspaces, sx }: NavContentProps) {
           sx={{
             px: 2,
             py: 1,
-            // color: 'primary.main',
+            color: 'primary.main',
             fontWeight: 600,
             fontSize: '0.75rem',
             letterSpacing: '0.1em',
@@ -190,28 +190,28 @@ export function NavContent({ data, slots, workspaces, sx }: NavContentProps) {
                       href={item.path}
                       sx={[
                         (themeInner) => ({
-                          pl: 2,
-                          py: 1,
+                          pl: 2.5,
+                          py: 1.5,
                           gap: 2.5,
-                          pr: 1,
+                          pr: 2,
                           borderRadius: 1.5,
                           typography: 'body2',
                           fontWeight: isActived ? 'fontWeightSemiBold' : 'fontWeightMedium',
                           color: isActived 
                             ? 'var(--sidebar-item-active-text)' 
                             : 'var(--sidebar-item-inactive)',
-                          minHeight: 40,
+                          minHeight: 48,
                           transition: 'all 0.15s ease',
                           position: 'relative',
                           overflow: 'hidden',
-                          // border: `1px solid ${isActived ? 'var(--sidebar-item-active)' : 'transparent'}`,
+                          border: `1px solid ${isActived ? 'var(--sidebar-item-active)' : 'transparent'}`,
                           
                           // Default state
                           backgroundColor: 'transparent',
                           '&:hover': {
                             backgroundColor: 'var(--sidebar-item-hover)',
                             color: 'text.primary',
-                            // transform: 'translateX(2px)',
+                            transform: 'translateX(2px)',
                             borderColor: 'var(--sidebar-item-border)',
                           },
                           
@@ -220,10 +220,20 @@ export function NavContent({ data, slots, workspaces, sx }: NavContentProps) {
                             fontWeight: 'fontWeightSemiBold',
                             color: 'var(--sidebar-item-active-text)',
                             backgroundColor: 'var(--sidebar-item-active)',
-                            // borderColor: 'var(--sidebar-item-active)',
+                            borderColor: 'var(--sidebar-item-active)',
                             '&:hover': {
                               backgroundColor: 'var(--sidebar-item-active-dark)',
-                              // transform: 'translateX(2px)',
+                              transform: 'translateX(2px)',
+                            },
+                            '&::before': {
+                              content: '""',
+                              position: 'absolute',
+                              left: 0,
+                              top: 0,
+                              bottom: 0,
+                              width: 3,
+                              background: 'var(--sidebar-item-active-dark)',
+                              borderRadius: '0 2px 2px 0',
                             },
                           }),
                         }),
@@ -240,7 +250,7 @@ export function NavContent({ data, slots, workspaces, sx }: NavContentProps) {
                           justifyContent: 'center',
                           color: isActived ? 'inherit' : 'var(--sidebar-item-inactive-icon)',
                           opacity: isActived ? 1 : 0.8,
-                          filter: isActived ? 'brightness(2)' : 'none',
+                          filter: isActived ? 'brightness(1.2)' : 'none',
                         }}
                       >
                         {item.icon}

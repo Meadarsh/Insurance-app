@@ -1,6 +1,6 @@
-import httpStatus from 'http-status';
 import User from '../models/user.model.js';
-import { generateAuthTokens } from '../utils/token.js';
+import httpStatus from 'http-status';
+import { generateAuthTokens, verifyToken } from '../utils/token.js';
 
 const register = async (req, res, next) => {
   try {
@@ -83,16 +83,40 @@ const refreshAuth = async (req, res, next) => {
       });
     }
     
-    // TODO: Implement refresh token verification
-    // const user = await verifyToken(refreshToken, 'refresh');
-    // const tokens = await generateAuthTokens(user);
-    
-    res.status(httpStatus.OK).json({
-      success: true,
-      message: 'Token refreshed successfully',
-      // user,
-      // tokens,
-    });
+    try {
+      // Verify the refresh token
+      const decoded = await verifyToken(refreshToken, 'refresh');
+      
+      // Find the user
+      const user = await User.findById(decoded.sub);
+      if (!user || !user.isActive) {
+        return res.status(httpStatus.UNAUTHORIZED).json({
+          success: false,
+          message: 'Invalid refresh token or user not found',
+        });
+      }
+      
+      // Generate new tokens
+      const tokens = await generateAuthTokens(user);
+      
+      res.status(httpStatus.OK).json({
+        success: true,
+        message: 'Token refreshed successfully',
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          isVerified: user.isVerified,
+        },
+        tokens,
+      });
+    } catch (tokenError) {
+      return res.status(httpStatus.UNAUTHORIZED).json({
+        success: false,
+        message: 'Invalid or expired refresh token',
+      });
+    }
   } catch (error) {
     next(error);
   }

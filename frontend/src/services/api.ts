@@ -1,4 +1,5 @@
 import { policyAPI } from './policy';
+import { analyticsAPI } from './analytics';
 
 const API_BASE_URL = 'http://localhost:3001/api';
 
@@ -95,5 +96,6 @@ export const healthCheck = async () => apiRequest('/health');
 export default {
   vendorAPI,
   policyAPI,
+  analyticsAPI,
   healthCheck,
 };

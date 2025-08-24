@@ -1,6 +1,4 @@
-import ApiInstance from "./api.instance";
-
-const API_BASE_URL = 'http://localhost:3001/api';
+import ApiInstance from './api.instance';
 
 // Cache for analytics data to reduce API calls
 let analyticsCache: AnalyticsData | null = null;
@@ -68,13 +66,12 @@ export const healthCheck = async (timeout = 3000): Promise<boolean> => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
     
-    const response = await fetch(`${API_BASE_URL}/health`, {
+    const response = await ApiInstance.get('/health', {
       signal: controller.signal,
-      method: 'GET',
     });
     
     clearTimeout(timeoutId);
-    return response.ok;
+    return response.status === 200;
   } catch (error) {
     return false;
   }
@@ -84,10 +81,10 @@ export const healthCheck = async (timeout = 3000): Promise<boolean> => {
 export const testConnection = async (): Promise<{ status: string; responseTime: number }> => {
   const startTime = Date.now();
   try {
-    const response = await fetch(`${API_BASE_URL}/health`);
+    const response = await ApiInstance.get('/health');
     const responseTime = Date.now() - startTime;
     
-    if (response.ok) {
+    if (response.status === 200) {
       return { status: 'Connected', responseTime };
     } else {
       return { status: 'Error', responseTime };
@@ -104,29 +101,37 @@ export const analyticsAPI = {
   async getDashboardAnalytics(): Promise<AnalyticsData> {
     // Return cached data if valid
     if (isCacheValid()) {
+      console.log('Analytics: Using cached data');
       return analyticsCache!;
     }
 
     try {
-      const response = await ApiInstance.get(`${API_BASE_URL}/analytics/dashboard`, {
-        // Add timeout to prevent hanging requests
-        signal: AbortSignal.timeout(5000),
-      });
+      console.log('Analytics: Fetching fresh data from API...');
+      const response = await ApiInstance.get('/analytics/dashboard');
       
-      if (!response) {
-        throw new Error(`HTTP error! status: ${response}`);
+      if (response.status !== 200) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const data = await response.data;
+      const responseData = response.data;
+      console.log('Analytics: API response received:', responseData);
       
-      // Cache the successful response
-      analyticsCache = data;
-      cacheTimestamp = Date.now();
-      
-      return data;
+      // Extract the actual data from the response structure
+      if (responseData.success && responseData.data) {
+        const data = responseData.data;
+        console.log('Analytics: Extracted data:', data);
+        
+        // Cache the successful response
+        analyticsCache = data;
+        cacheTimestamp = Date.now();
+        
+        return data;
+      } else {
+        throw new Error('Invalid API response structure');
+      }
     } catch (error) {
-      console.warn('Using fallback data due to API error:', error);
-      return getFallbackAnalyticsData();
+      console.error('Analytics: API call failed:', error);
+      throw new Error('Failed to fetch analytics data. Please check your connection and try again.');
     }
   },
 
@@ -151,13 +156,13 @@ export const analyticsAPI = {
   // Get real-time data (only when needed)
   async getRealTimeData(): Promise<Partial<AnalyticsData>> {
     try {
-      const response = await ApiInstance.get(`${API_BASE_URL}/analytics/realtime`);
+      const response = await ApiInstance.get('/analytics/realtime');
       
-      if (!response) {
-        throw new Error(`HTTP error! status: ${response}`);
+      if (response.status !== 200) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const data = await response.data;
+      const data = response.data;
       
       // Update cache with new data
       if (analyticsCache) {
@@ -179,71 +184,45 @@ export const analyticsAPI = {
   },
 
   // Health check
-  healthCheck,
-  
-  // Test connection
-  testConnection,
-};
+  async healthCheck(timeout = 3000): Promise<boolean> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    try {
+      const response = await ApiInstance.get('/analytics/dashboard', {
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      return response.status === 200;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      console.warn('Health check failed:', error);
+      return false;
+    }
+  },
 
-// Enhanced fallback data when API is not available
-function getFallbackAnalyticsData(): AnalyticsData {
-  return {
-    stats: {
-      weeklySales: {
-        total: 714000,
-        percent: 11,
-        chart: {
-          categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
-          series: [22, 8, 35, 50, 82, 84, 77, 12],
-        },
-      },
-      newUsers: {
-        total: 116000,
-        percent: 23,
-        chart: {
-          categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
-          series: [56, 47, 40, 62, 73, 30, 23, 54],
-        },
-      },
-      purchaseOrders: {
-        total: 560000,
-        percent: 2.6,
-        chart: {
-          categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
-          series: [40, 70, 50, 28, 70, 75, 7, 64],
-        },
-      },
-      messages: {
-        total: 123000,
-        percent: 5.6,
-        chart: {
-          categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
-          series: [56, 30, 23, 54, 47, 40, 62, 73],
-        },
-      },
-    },
-    currentVisits: {
-      series: [
-        { label: 'America', value: 3500 },
-        { label: 'Asia', value: 2500 },
-        { label: 'Europe', value: 1500 },
-        { label: 'Africa', value: 500 },
-      ],
-    },
-    websiteVisits: {
-      categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
-      series: [
-        {
-          name: 'Team A',
-          data: [20, 34, 45, 56, 67, 78, 89, 100],
-        },
-        {
-          name: 'Team B',
-          data: [10, 24, 35, 46, 57, 68, 79, 90],
-        },
-      ],
-    },
-  };
-}
+  // Test connection to analytics API
+  async testConnection(): Promise<{ success: boolean; responseTime?: number; error?: string }> {
+    const startTime = Date.now();
+    try {
+      const response = await ApiInstance.get('/analytics/dashboard');
+      const responseTime = Date.now() - startTime;
+      
+      if (response.status === 200) {
+        return { success: true, responseTime };
+      } else {
+        return { success: false, error: `HTTP ${response.status}` };
+      }
+    } catch (error: any) {
+      const responseTime = Date.now() - startTime;
+      return { 
+        success: false, 
+        responseTime, 
+        error: error.message || 'Connection failed' 
+      };
+    }
+  },
+};
 
 export default analyticsAPI;

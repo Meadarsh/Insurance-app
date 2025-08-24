@@ -4,6 +4,18 @@ import Master from '../models/master.model.js';
 import FileUpload from '../models/fileUpload.model.js';
 import { Types } from 'mongoose';
 
+// Helper function to calculate growth percentage
+const calculateGrowthPercentage = (data, field = 'total') => {
+  if (!data || data.length < 2) return 0;
+  
+  const current = data[0]?.[field] || 0;
+  const previous = data[1]?.[field] || 0;
+  
+  if (previous === 0) return current > 0 ? 100 : 0;
+  
+  return Math.round(((current - previous) / previous) * 100 * 10) / 10;
+};
+
 export const getDashboardAnalytics = async (req, res) => {
   try {
     const userId = req.user?._id;
@@ -157,11 +169,13 @@ export const getDashboardAnalytics = async (req, res) => {
 
     // Calculate growth percentages and format data for frontend
     const weeklySales = {
-      total: totalPremium[0]?.total || 714000,
-      percent: 2.6,
+      total: totalPremium[0]?.total || 0,
+      percent: calculateGrowthPercentage(weeklySalesData),
       chart: {
         categories: weeklySalesData.map(item => {
-          const date = new Date(item._id.split('-')[0], 0, 1 + (parseInt(item._id.split('-')[1]) - 1) * 7);
+          // Parse the week-based ID format (YYYY-WW)
+          const [year, week] = item._id.split('-');
+          const date = new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7);
           return date.toLocaleDateString('en-US', { month: 'short' });
         }).reverse(),
         series: weeklySalesData.map(item => item.total || 0).reverse()
@@ -169,8 +183,8 @@ export const getDashboardAnalytics = async (req, res) => {
     };
 
     const newUsers = {
-      total: totalPolicies || 1352831,
-      percent: -0.1,
+      total: totalPolicies || 0,
+      percent: calculateGrowthPercentage(newUsersData, 'count'),
       chart: {
         categories: newUsersData.map(item => {
           const date = new Date(item._id);
@@ -181,8 +195,8 @@ export const getDashboardAnalytics = async (req, res) => {
     };
 
     const purchaseOrders = {
-      total: totalPolicies || 1723315,
-      percent: 2.8,
+      total: totalPolicies || 0,
+      percent: calculateGrowthPercentage(purchaseOrdersData, 'count'),
       chart: {
         categories: purchaseOrdersData.map(item => {
           const date = new Date(item._id);
@@ -193,40 +207,49 @@ export const getDashboardAnalytics = async (req, res) => {
     };
 
     const messages = {
-      total: messagesData[0]?.count || 234,
-      percent: 3.6,
+      total: messagesData[0]?.count || 0,
+      percent: calculateGrowthPercentage(messagesData, 'count'),
       chart: {
-        categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
-        series: [56, 30, 23, 54, 47, 40, 62, 73]
+        categories: messagesData.map(item => {
+          const date = new Date(item._id);
+          return date.toLocaleDateString('en-US', { month: 'short' });
+        }).reverse(),
+        series: messagesData.map(item => item.count || 0).reverse()
       }
     };
 
     const currentVisits = {
-      series: currentVisitsData.map(item => ({
+      series: currentVisitsData.length > 0 ? currentVisitsData.map(item => ({
         label: item._id || 'Unknown',
         value: item.value || 0
-      }))
+      })) : [
+        { label: 'Direct', value: 0 },
+        { label: 'Referral', value: 0 },
+        { label: 'Social', value: 0 },
+        { label: 'Search', value: 0 }
+      ]
     };
 
     const websiteVisits = {
-      categories: websiteVisitsData.map(item => {
+      categories: websiteVisitsData.length > 0 ? websiteVisitsData.map(item => {
         const date = new Date(item._id);
         return date.toLocaleDateString('en-US', { month: 'short' });
-      }),
-      series: [
+      }) : [],
+      series: websiteVisitsData.length > 0 ? [
         {
-          name: 'Team A',
+          name: 'Visits',
           data: websiteVisitsData.map(item => item.count || 0)
-        },
+        }
+      ] : [
         {
-          name: 'Team B',
-          data: websiteVisitsData.map(item => Math.floor((item.count || 0) * 0.8))
+          name: 'Visits',
+          data: []
         }
       ]
     };
 
     // Return data in the format expected by frontend
-    res.status(200).json({
+    const responseData = {
       success: true,
       data: {
         stats: {
@@ -238,7 +261,11 @@ export const getDashboardAnalytics = async (req, res) => {
         currentVisits,
         websiteVisits
       }
-    });
+    };
+    
+    console.log('Analytics: Sending response data:', JSON.stringify(responseData, null, 2));
+    
+    res.status(200).json(responseData);
 
   } catch (error) {
     console.error('Analytics error:', error);

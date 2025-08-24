@@ -40,7 +40,9 @@ export function OverviewAnalyticsView() {
       setError(null);
       setSuccess(null);
       
+      console.log('Dashboard: Fetching analytics data...');
       const data = await analyticsAPI.getDashboardAnalytics();
+      console.log('Dashboard: Analytics data received:', data);
       setAnalyticsData(data);
       setRetryCount(0); // Reset retry count on success
       
@@ -50,7 +52,7 @@ export function OverviewAnalyticsView() {
         setTimeout(() => setSuccess(null), 3000);
       }
     } catch (err) {
-      console.error('Failed to fetch analytics data:', err);
+      console.error('Dashboard: Failed to fetch analytics data:', err);
       setError('Failed to load dashboard data. Using fallback data.');
       // Don't set analyticsData to null, let it use fallback data
     } finally {
