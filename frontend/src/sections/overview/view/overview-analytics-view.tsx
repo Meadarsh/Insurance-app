@@ -53,8 +53,8 @@ export function OverviewAnalyticsView() {
       }
     } catch (err) {
       console.error('Dashboard: Failed to fetch analytics data:', err);
-      setError('Failed to load dashboard data. Using fallback data.');
-      // Don't set analyticsData to null, let it use fallback data
+      setError('Failed to load dashboard data. Please try again.');
+      setAnalyticsData(null);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -68,17 +68,10 @@ export function OverviewAnalyticsView() {
       // Clear cache to force fresh data
       analyticsAPI.clearCache();
       
-      // Check if backend is available first
-      const isHealthy = await analyticsAPI.healthCheck();
-      if (!isHealthy) {
-        setError('Backend server is not available. Using fallback data.');
-        return;
-      }
-      
       await fetchAnalyticsData(true);
     } catch (err) {
       console.error('Refresh failed:', err);
-      setError('Refresh failed. Using fallback data.');
+      setError('Refresh failed. Please try again.');
     }
   }, [refreshing, fetchAnalyticsData]);
 

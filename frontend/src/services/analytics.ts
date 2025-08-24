@@ -60,53 +60,16 @@ export interface AnalyticsData {
 const isCacheValid = (): boolean => 
   analyticsCache !== null && (Date.now() - cacheTimestamp) < CACHE_DURATION;
 
-// Health check with timeout
-export const healthCheck = async (timeout = 3000): Promise<boolean> => {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
-    
-    const response = await ApiInstance.get('/health', {
-      signal: controller.signal,
-    });
-    
-    clearTimeout(timeoutId);
-    return response.status === 200;
-  } catch (error) {
-    return false;
-  }
-};
-
-// Test connection with more details
-export const testConnection = async (): Promise<{ status: string; responseTime: number }> => {
-  const startTime = Date.now();
-  try {
-    const response = await ApiInstance.get('/health');
-    const responseTime = Date.now() - startTime;
-    
-    if (response.status === 200) {
-      return { status: 'Connected', responseTime };
-    } else {
-      return { status: 'Error', responseTime };
-    }
-  } catch (error) {
-    const responseTime = Date.now() - startTime;
-    return { status: 'Failed', responseTime };
-  }
-};
-
 // Main analytics API object
 export const analyticsAPI = {
   // Get dashboard analytics with caching
   async getDashboardAnalytics(): Promise<AnalyticsData> {
     // Return cached data if valid
     if (isCacheValid()) {
-      console.log('Analytics: Using cached data');
       return analyticsCache!;
     }
 
     try {
-      console.log('Analytics: Fetching fresh data from API...');
       const response = await ApiInstance.get('/analytics/dashboard');
       
       if (response.status !== 200) {
@@ -114,12 +77,10 @@ export const analyticsAPI = {
       }
       
       const responseData = response.data;
-      console.log('Analytics: API response received:', responseData);
       
       // Extract the actual data from the response structure
       if (responseData.success && responseData.data) {
         const data = responseData.data;
-        console.log('Analytics: Extracted data:', data);
         
         // Cache the successful response
         analyticsCache = data;
@@ -181,47 +142,6 @@ export const analyticsAPI = {
   clearCache(): void {
     analyticsCache = null;
     cacheTimestamp = 0;
-  },
-
-  // Health check
-  async healthCheck(timeout = 3000): Promise<boolean> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
-    
-    try {
-      const response = await ApiInstance.get('/analytics/dashboard', {
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      return response.status === 200;
-    } catch (error) {
-      clearTimeout(timeoutId);
-      console.warn('Health check failed:', error);
-      return false;
-    }
-  },
-
-  // Test connection to analytics API
-  async testConnection(): Promise<{ success: boolean; responseTime?: number; error?: string }> {
-    const startTime = Date.now();
-    try {
-      const response = await ApiInstance.get('/analytics/dashboard');
-      const responseTime = Date.now() - startTime;
-      
-      if (response.status === 200) {
-        return { success: true, responseTime };
-      } else {
-        return { success: false, error: `HTTP ${response.status}` };
-      }
-    } catch (error: any) {
-      const responseTime = Date.now() - startTime;
-      return { 
-        success: false, 
-        responseTime, 
-        error: error.message || 'Connection failed' 
-      };
-    }
   },
 };
 

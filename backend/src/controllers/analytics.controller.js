@@ -249,7 +249,7 @@ export const getDashboardAnalytics = async (req, res) => {
     };
 
     // Return data in the format expected by frontend
-    const responseData = {
+    res.status(200).json({
       success: true,
       data: {
         stats: {
@@ -261,11 +261,7 @@ export const getDashboardAnalytics = async (req, res) => {
         currentVisits,
         websiteVisits
       }
-    };
-    
-    console.log('Analytics: Sending response data:', JSON.stringify(responseData, null, 2));
-    
-    res.status(200).json(responseData);
+    });
 
   } catch (error) {
     console.error('Analytics error:', error);
