@@ -10,7 +10,7 @@ const protect = async (req, res, next) => {
 
     if (!authHeader) {
       console.error('No Authorization header found');
-      return res.status(401).json({ success: false, error: 'No token provided' });
+      return res.status(401).json({ success: false, error: 'User is not logged in ' });
     }
     
     // More flexible token extraction
@@ -26,8 +26,8 @@ const protect = async (req, res, next) => {
     }
         
     if (!token) {
-      console.error('No token found in Authorization header');
-      return res.status(401).json({ success: false, error: 'No token provided' });
+      console.error('User is not logged in - no token found');
+      return res.status(401).json({ success: false, error: 'User is not logged in' });
     }
 
     // Verify token
