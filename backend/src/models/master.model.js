@@ -1,38 +1,39 @@
+// models/master.model.js
 import mongoose from "mongoose";
 
-const masterSchema = new mongoose.Schema({
-  productName: { type: String, required: true },              
-  premiumPayingTerm: {min:{type: Number, required: true}, max:{type: Number, default:null} },        
-  policyTerm: { type: Number, required: true },               
-  policyNumber: { type: String, required: true }, // Removed unique constraint to allow duplicates
-  policyPrices: [
-    {
-      price: { type: Number, required: true },
-      date: { type: Date, required: true }
-    }
-  ],
-  productVariant: { type: String },                          
-  totalRate: { type: Number },    // in %                            
-  commission: { type: Number },   // in %                            
-  reward: { type: Number },       // in %        
-  userId: { type: String, required: true }, // Changed to String with default     
-  fileUpload: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'FileUpload',
-    default: null
-  }                   
-}, { 
-  timestamps: true,
-  toJSON: { virtuals: true },
-  toObject: { virtuals: true }
-});
+const masterSchema = new mongoose.Schema(
+  {
+    company: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      required: true,
+    },
 
-// Virtual for file upload details
-masterSchema.virtual('fileDetails', {
-  ref: 'FileUpload',
-  localField: 'fileUpload',
-  foreignField: '_id',
-  justOne: true
+    productName: String,
+    productVariant: String,
+
+    // ⬇️ CHANGED (range instead of single number)
+    premiumPayingTermMin: { type: Number, required: true },
+    premiumPayingTermMax: { type: Number, default: null }, // null => open-ended (e.g., 11+)
+
+    policyTerm: Number,
+    policyNumber: String,
+
+    totalRate: Number,
+    commission: Number,
+    reward: Number,
+  },
+  { timestamps: true }
+);
+
+// helpful indexes
+masterSchema.index({
+  company: 1,
+  productName: 1,
+  productVariant: 1,
+  policyTerm: 1,
+  premiumPayingTermMin: 1,
+  premiumPayingTermMax: 1,
 });
 
 export default mongoose.model("Master", masterSchema);

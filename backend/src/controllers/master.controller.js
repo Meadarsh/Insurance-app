@@ -1,190 +1,152 @@
-import Master from '../models/master.model.js';
-import csv from 'csv-parser';
-import fs from 'fs';
+// controllers/master.controller.js
+import fs from "fs";
+import csv from "csv-parser";
+import Master from "../models/master.model.js";
+import Company from "../models/company.model.js";
 
-// Create a new master record
-export const createMaster = async (req, res) => {
-  try {
-    const userId = req.user._id;
-    const master = await Master.create({ ...req.body, userId });
-    res.status(201).json({ success: true, data: master });
-  } catch (error) {
-    res.status(400).json({ success: false, error: error.message });
-  }
- };
-
-// Get all master records
-export const getMasters = async (req, res) => {
-  try {
-    const masters = await Master.find({ userId: req.user._id }).sort({ createdAt: -1 });
-    res.status(200).json({ success: true, count: masters.length, data: masters });
-  } catch (error) {
-    res.status(400).json({ success: false, error: error.message });
-  }
+const extractCompanyFromName = (originalName, marker = "rate") => {
+  const s = String(originalName || "").toLowerCase();
+  const parts = s.split(marker);
+  const raw = (parts[0] || s).replace(/\.[^.]+$/, ""); 
+  return raw.replace(/[^a-z0-9]+/g, "").trim() || "unknowncompany";
 };
 
-// Get single master record
-export const getMaster = async (req, res) => {
-  try {
-    const master = await Master.findOne({ _id: req.params.id, userId: req.user._id }).populate('userId');
-    if (!master) {
-      return res.status(404).json({ success: false, error: 'Master record not found' });
-    }
-    res.status(200).json({ success: true, data: master });
-  } catch (error) {
-    res.status(400).json({ success: false, error: error.message });
-  }
-};
+const parsePPT = (raw) => {
+  const s = String(raw ?? "").trim();
+  if (!s) return { min: 0, max: 0 };
 
-// Update master record
-export const updateMaster = async (req, res) => {
-  try {
-    const master = await Master.findOneAndUpdate(
-      { _id: req.params.id, userId: req.user._id },
-      req.body,
-      { new: true, runValidators: true }
-    );
-    if (!master) {
-      return res.status(404).json({ success: false, error: 'Master record not found' });
-    }
-    res.status(200).json({ success: true, data: master });
-  } catch (error) {
-    res.status(400).json({ success: false, error: error.message });
+  // 11+ or "11 +"
+  if (/^\d+\s*\+$/.test(s)) {
+    const n = parseInt(s, 10);
+    return { min: isNaN(n) ? 0 : n, max: null };
   }
-};
 
-// Delete master record
-export const deleteMaster = async (req, res) => {
-  try {
-    const master = await Master.findOneAndDelete({ _id: req.params.id, userId: req.user._id });
-    if (!master) {
-      return res.status(404).json({ success: false, error: 'Master record not found' });
-    }
-    res.status(200).json({ success: true, data: {} });
-  } catch (error) {
-    res.status(400).json({ success: false, error: error.message });
+  // range like "10-12"
+  if (/^\d+\s*-\s*\d+$/.test(s)) {
+    const [a, b] = s.split("-").map((v) => parseInt(v, 10));
+    const min = isNaN(a) ? 0 : a;
+    const max = isNaN(b) ? min : b;
+    return { min, max };
   }
-};
 
-// Upload CSV
-export const uploadCSV = async (req, res) => {
+  // single number
+  const n = parseInt(s, 10);
+  return { min: isNaN(n) ? 0 : n, max: isNaN(n) ? 0 : n };
+};
+const pct = (v) =>
+  Number(
+    String(v ?? 0)
+      .toString()
+      .replace("%", "")
+  ) || 0;
+
+// 📌 Upload & save Master CSV (supports PPT 11+ / ranges)
+export const uploadMasterCSV = async (req, res) => {
   if (!req.file) {
-    return res.status(400).json({ success: false, error: 'Please upload a CSV file' });
+    return res
+      .status(400)
+      .json({ success: false, error: "Please upload a CSV file" });
   }
-
-  console.log('File received:', req.file);
-  console.log('File path:', req.file.path);
-  console.log('File size:', req.file.size);
 
   const results = [];
-  
+
   try {
-    // Check if file exists and is readable
-    if (!fs.existsSync(req.file.path)) {
-      return res.status(500).json({ success: false, error: 'Uploaded file not found' });
-    }
+    // derive company name from file name (e.g., "companyArate.csv")
+    const companyName = extractCompanyFromName(req.file.originalname, "rate");
 
-    // Create a promise-based CSV processing
-    const processCSV = () => {
-      return new Promise((resolve, reject) => {
-        const stream = fs.createReadStream(req.file.path);
-        
-        stream.on('error', (error) => {
-          console.error('Stream error:', error);
-          reject(error);
-        });
-
-        stream
-          .pipe(csv())
-          .on('data', (data) => {
-            try {
-              console.log('Processing CSV row:', data);
-              // Transform CSV data to match Master schema
-              const masterData = {
-                productName: data['Product Name'] || 'Unknown Product',
-                premiumPayingTerm: (() => {
-                  const term = data['Premium Paying Term'] || '0';
-                  if (term.includes('+')) {
-                    const minValue = parseInt(term);
-                    return { min: isNaN(minValue) ? 0 : minValue, max: null };
-                  }
-                  const numValue = parseInt(term);
-                  return { min: isNaN(numValue) ? 0 : numValue, max: isNaN(numValue) ? 0 : numValue };
-                })(),
-                policyTerm: Number(data['Policy Term'] || 0),
-                policyNumber: data['Policy Number'] || `POL${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                policyPrices: [
-                  {
-                    price: Number(data['Policy Prices'] || 0),
-                    date: new Date()
-                  }
-                ],
-                productVariant: data['Product Variant'] || 'Standard',
-                totalRate: Number(String(data['Total Rate'] || 0).replace('%', '')) || 0,
-                commission: Number(String(data['Commission'] || 0).replace('%', '')) || 0,
-                reward: Number(String(data['Reward'] || 0).replace('%', '')) || 0,
-                userId: req.user._id
-              };
-              results.push(masterData);
-            } catch (rowError) {
-              console.error('Error processing row:', rowError, data);
-              // Continue processing other rows
-            }
-          })
-          .on('end', () => {
-            console.log('CSV processing completed. Rows processed:', results.length);
-            resolve(results);
-          })
-          .on('error', (error) => {
-            console.error('CSV parsing error:', error);
-            reject(error);
-          });
+    // ensure company exists (per user)
+    let company = await Company.findOne({
+      name: companyName,
+      createdBy: req.user._id,
+    });
+    if (!company) {
+      company = await Company.create({
+        name: companyName,
+        createdBy: req.user._id,
       });
-    };
+    }
 
-    // Process the CSV
-    await processCSV();
-    
+    // process csv
+    await new Promise((resolve, reject) => {
+      fs.createReadStream(req.file.path)
+        .pipe(csv())
+        .on("data", (row) => {
+          try {
+            const { min: pptMin, max: pptMax } = parsePPT(
+              row["Premium Paying Term"]
+            );
+
+            const masterData = {
+              company: company._id,
+              productName: row["Product Name"] || "",
+              productVariant: row["Product Variant"] || "",
+
+              // store as range
+              premiumPayingTermMin: pptMin,
+              premiumPayingTermMax: pptMax, // null = open-ended (e.g., 11+)
+
+              policyTerm: Number(row["Policy Term"] || 0),
+              policyNumber: row["Policy Number"] || "",
+
+              totalRate: pct(row["Total Rate"]),
+              commission: pct(row["Commission"]),
+              reward: pct(row["Reward"]),
+            };
+
+            results.push(masterData);
+          } catch (err) {
+            // swallow bad row but continue
+            console.error("Row parse error:", err);
+          }
+        })
+        .on("end", resolve)
+        .on("error", reject);
+    });
+
     if (results.length === 0) {
-      // Clean up the file
-      if (fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
-      return res.status(400).json({ success: false, error: 'No valid data found in CSV file' });
+      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+      return res
+        .status(400)
+        .json({ success: false, error: "CSV had no valid rows" });
     }
 
-    console.log('Attempting to insert', results.length, 'records into database');
-    
-    // Insert new records
-    const createdMasters = await Master.insertMany(results);
-    console.log('Successfully inserted', createdMasters.length, 'records');
-    
-    // Clean up the file after processing
-    if (fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
-    
+    const inserted = await Master.insertMany(results);
+
+    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path); // cleanup
+
     res.status(201).json({
       success: true,
-      count: createdMasters.length,
-      data: createdMasters
+      company: company.name,
+      count: inserted.length,
     });
-    
   } catch (error) {
-    console.error('Upload CSV error:', error);
-    
-    // Clean up the file on error
-    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+    console.error(error);
+    if (req.file?.path && fs.existsSync(req.file.path)) {
       try {
         fs.unlinkSync(req.file.path);
-      } catch (cleanupError) {
-        console.error('Error cleaning up file:', cleanupError);
-      }
+      } catch {}
     }
-    
-    res.status(500).json({ 
-      success: false, 
-      error: error.message || 'Internal server error during CSV processing' 
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// 📌 Get all master rows for a company (optional but handy for debugging/audit)
+export const getCompanyMasters = async (req, res) => {
+  try {
+    const company = await Company.findOne({
+      _id: req.params.companyId,
+      createdBy: req.user._id,
     });
+    if (!company)
+      return res
+        .status(404)
+        .json({ success: false, error: "Company not found" });
+
+    const masters = await Master.find({ company: company._id }).sort({
+      createdAt: -1,
+    });
+    res.json({ success: true, count: masters.length, data: masters });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
   }
 };

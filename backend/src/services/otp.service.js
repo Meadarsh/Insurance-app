@@ -1,7 +1,5 @@
 import OTP from '../models/otp.model.js';
 import config from '../config/config.js';
-
-
 const generateOTP = (length = 6) => {
   const digits = '0123456789';
   let otp = '';

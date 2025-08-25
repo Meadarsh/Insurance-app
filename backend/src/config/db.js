@@ -21,11 +21,11 @@ async function connectDB() {
     const opts = {
       bufferCommands: false, // Disable mongoose buffering
       serverSelectionTimeoutMS: 10000, // Timeout after 10s instead of 30s for faster failure
-      socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
+      socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
     };
 
     cached.promise = mongoose.connect(config.mongo.uri, opts).then((mongoose) => {
-      console.log('MongoDB connected successfully');
+      console.log(`MongoDB connected successfully ${config.mongo.uri}`);
       return mongoose;
     }).catch((error) => {
       console.error('MongoDB connection error:', error);

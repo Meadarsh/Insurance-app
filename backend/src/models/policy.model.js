@@ -1,79 +1,30 @@
 import mongoose from "mongoose";
+// Business file
+const policySchema = new mongoose.Schema(
+  {
+    company: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company",
+      required: true,
+    },
 
-const policySchema = new mongoose.Schema({
-  SRC: { type: String },
-  FIN_YR: { type: Number },
-  FIN_MONTH: { type: Number },
-  applicationNo: { type: String },
-  policyNo: { type: String },
-  CHDRSTCDB: { type: String },
-  proposalDate: { type: Date },
-  originalIssueDate: { type: Date },
-  contractCommencementDate: { type: Date },
-  premiumPayingTerm: { type: Number },
-  policyTerm: { type: Number },
-  branchCode: { type: String },
-  branchName: { type: String },
-  productCode: { type: String },
-  productName: { type: String },
-  productVariant: { type: String },
-  parNparUL: { type: String },
-  campaign: { type: String },
-  PIPS: { type: String },
-  LOB: { type: String },
-  STATCODE: { type: String },
-  BILLFREQ: { type: String },
-  PREMIUM: { type: Number },
-  netPremium: { type: Number },
-  sumAssured: { type: Number },
-  FYWRP: { type: Number },
-  EFFECT: { type: String },
-  transactionDateFinal: { type: Date },
-  transactionDate: { type: Date },
-  cancellationDate: { type: Date },
-  transactionNo: { type: String },
-  FYFLG: { type: String },
-  lineGroup: { type: String },
-  salesUnit: { type: String },
-  ZBANCNUM: { type: String },
-  REPNUM: { type: String },
-  IACode: { type: String },
-  channel: { type: String },
-  subChannel: { type: String },
-  payeeCode: { type: String },
-  payeeName: { type: String },
-  relationshipCode: { type: String },
-  relationshipName: { type: String },
-  clientId: { type: String },
-  customerName: { type: String },
-  agentNo: { type: String },
-  agentName: { type: String },
-  agentType: { type: String },
-  agentAppointedDt: { type: Date },
-  agentTerminatedDt: { type: Date },
-  AGNTNUM_1_TO_MANY: { type: String },
-  totalRate: { type: Number },                               
-  commission: { type: Number },                              
-  reward: { type: Number },
-  masterRef: { type: mongoose.Schema.Types.ObjectId, ref: "Master" },
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-  fileUpload: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'FileUpload',
-    default: null
-  }
-}, { 
-  timestamps: true,
-  toJSON: { virtuals: true },
-  toObject: { virtuals: true }
-});
+    // business file data
+    productName: String,
+    productVariant: String,
+    premiumPayingTerm: Number,
+    policyTerm: Number,
+    policyNo: String,
+    netPremium: Number,
 
-// Virtual for file upload details
-policySchema.virtual('fileDetails', {
-  ref: 'FileUpload',
-  localField: 'fileUpload',
-  foreignField: '_id',
-  justOne: true
-});
+    // enriched from master
+    commissionPct: Number,
+    rewardPct: Number,
+    totalRatePct: Number,
+    commissionAmount: Number,
+    rewardAmount: Number,
+    totalProfit: Number,
+  },
+  { timestamps: true }
+);
 
 export default mongoose.model("Policy", policySchema);
