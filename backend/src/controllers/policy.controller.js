@@ -17,7 +17,6 @@ const parseDate = (dateString) => {
   return null;
 };
 
-// e.g., "companyAbusiness.csv" -> "companya"
 const extractCompanyFromName = (originalName, marker = "business") => {
   const s = String(originalName || "").toLowerCase();
   const parts = s.split(marker);
