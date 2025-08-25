@@ -1,274 +1,150 @@
-// Overall dashboard analytics controller {Implement changes according to the new data models and requirements i.e amount (profited) , commission breakdown}
-import Policy from '../models/policy.model.js';
-import Vendor from '../models/vendor.model.js';
-import Master from '../models/master.model.js';
-import FileUpload from '../models/fileUpload.model.js';
-import { Types } from 'mongoose';
+import mongoose from "mongoose";
+import Company from "../models/company.model.js";
+import Policy from "../models/policy.model.js";
 
-// Helper function to calculate growth percentage
-const calculateGrowthPercentage = (data, field = 'total') => {
-  if (!data || data.length < 2) return 0;
-  
-  const current = data[0]?.[field] || 0;
-  const previous = data[1]?.[field] || 0;
-  
-  if (previous === 0) return current > 0 ? 100 : 0;
-  
-  return Math.round(((current - previous) / previous) * 100 * 10) / 10;
-};
-
-export const getDashboardAnalytics = async (req, res) => {
+export const getCompanySummary = async (req, res) => {
   try {
-    const userId = req.user?._id;
-    
-    // Get total counts and analytics data
-    const [
-      totalPolicies,
-      totalVendors,
-      totalProducts,
-      totalFileUploads,
-      totalPremium,
-      totalSumAssured,
-      policiesByProduct,
-      policiesByMonth,
-      topVendors,
-      weeklySalesData,
-      newUsersData,
-      purchaseOrdersData,
-      messagesData,
-      currentVisitsData,
-      websiteVisitsData
-    ] = await Promise.all([
-      // Total policies count
-      Policy.countDocuments({ userId }),
-      
-      // Total vendors count
-      Vendor.countDocuments({ userId }),
-      
-      // Total products count
-      Master.countDocuments({ userId }),
-      
-      // Total file uploads count
-      FileUpload.countDocuments({ userId }),
-      
-      // Total premium amount
-      Policy.aggregate([
-        { $match: { userId: new Types.ObjectId(userId) } },
-        { $group: { _id: null, total: { $sum: '$PREMIUM' } } }
-      ]),
-      
-      // Total sum assured
-      Policy.aggregate([
-        { $match: { userId: new Types.ObjectId(userId) } },
-        { $group: { _id: null, total: { $sum: '$sumAssured' } } }
-      ]),
-      
-      // Policies by product
-      Policy.aggregate([
-        { $match: { userId: new Types.ObjectId(userId) } },
-        { $group: { _id: '$productName', count: { $sum: 1 }, totalPremium: { $sum: '$PREMIUM' } } },
-        { $sort: { count: -1 } },
-        { $limit: 5 }
-      ]),
-      
-      // Policies by month (last 6 months)
-      Policy.aggregate([
-        {
-          $match: {
-            userId: new Types.ObjectId(userId),
-            transactionDate: { $gte: new Date(new Date().setMonth(new Date().getMonth() - 5)) }
-          }
-        },
-        {
-          $group: {
-            _id: { $dateToString: { format: '%Y-%m', date: '$transactionDate' } },
-            count: { $sum: 1 },
-            totalPremium: { $sum: '$PREMIUM' }
-          }
-        },
-        { $sort: { '_id': 1 } }
-      ]),
-      
-      // Top vendors by policy count
-      Vendor.aggregate([
-        { $match: { userId: new Types.ObjectId(userId) } },
-        { $group: { _id: '$vendorName', count: { $sum: 1 }, totalPremium: { $sum: '$PREMIUM' } } },
-        { $sort: { totalPremium: -1 } },
-        { $limit: 5 }
-      ]),
+    const { companyId } = req.params;
 
-      // Weekly sales data (based on policies)
-      Policy.aggregate([
-        { $match: { userId: new Types.ObjectId(userId) } },
-        {
-          $group: {
-            _id: { $dateToString: { format: '%Y-%U', date: '$transactionDate' } },
-            total: { $sum: '$PREMIUM' },
-            count: { $sum: 1 }
-          }
-        },
-        { $sort: { '_id': -1 } },
-        { $limit: 8 }
-      ]),
+    if (!mongoose.isValidObjectId(companyId)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid company id" });
+    }
 
-      // New users data (based on new policies)
-      Policy.aggregate([
-        { $match: { userId: new Types.ObjectId(userId) } },
-        {
-          $group: {
-            _id: { $dateToString: { format: '%Y-%m', date: '$transactionDate' } },
-            count: { $sum: 1 }
-          }
-        },
-        { $sort: { '_id': -1 } },
-        { $limit: 8 }
-      ]),
+    const company = await Company.findOne({
+      _id: companyId,
+      createdBy: req.user._id,
+    })
+      .select("_id name totals lastTotalsAt updatedAt createdAt")
+      .lean();
 
-      // Purchase orders data (based on policies)
-      Policy.aggregate([
-        { $match: { userId: new Types.ObjectId(userId) } },
-        {
-          $group: {
-            _id: { $dateToString: { format: '%Y-%m', date: '$transactionDate' } },
-            count: { $sum: 1 },
-            total: { $sum: '$PREMIUM' }
-          }
-        },
-        { $sort: { '_id': -1 } },
-        { $limit: 8 }
-      ]),
+    if (!company) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Company not found" });
+    }
 
-      // Messages data (simulated)
-      Promise.resolve([{ count: 234 }]),
-
-      // Current visits data (based on policies by region/product)
-      Policy.aggregate([
-        { $match: { userId: new Types.ObjectId(userId) } },
-        {
-          $group: {
-            _id: '$productName',
-            value: { $sum: 1 }
-          }
-        },
-        { $sort: { value: -1 } },
-        { $limit: 4 }
-      ]),
-
-      // Website visits data (based on policies by month)
-      Policy.aggregate([
-        { $match: { userId: new Types.ObjectId(userId) } },
-        {
-          $group: {
-            _id: { $dateToString: { format: '%Y-%m', date: '$transactionDate' } },
-            count: { $sum: 1 }
-          }
-        },
-        { $sort: { '_id': 1 } },
-        { $limit: 9 }
-      ])
-    ]);
-
-    // Calculate growth percentages and format data for frontend
-    const weeklySales = {
-      total: totalPremium[0]?.total || 0,
-      percent: calculateGrowthPercentage(weeklySalesData),
-      chart: {
-        categories: weeklySalesData.map(item => {
-          // Parse the week-based ID format (YYYY-WW)
-          const [year, week] = item._id.split('-');
-          const date = new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7);
-          return date.toLocaleDateString('en-US', { month: 'short' });
-        }).reverse(),
-        series: weeklySalesData.map(item => item.total || 0).reverse()
-      }
+    const t = company.totals || {
+      policies: 0,
+      premium: 0,
+      commission: 0,
+      reward: 0,
+      profit: 0,
     };
 
-    const newUsers = {
-      total: totalPolicies || 0,
-      percent: calculateGrowthPercentage(newUsersData, 'count'),
-      chart: {
-        categories: newUsersData.map(item => {
-          const date = new Date(item._id);
-          return date.toLocaleDateString('en-US', { month: 'short' });
-        }).reverse(),
-        series: newUsersData.map(item => item.count || 0).reverse()
-      }
-    };
-
-    const purchaseOrders = {
-      total: totalPolicies || 0,
-      percent: calculateGrowthPercentage(purchaseOrdersData, 'count'),
-      chart: {
-        categories: purchaseOrdersData.map(item => {
-          const date = new Date(item._id);
-          return date.toLocaleDateString('en-US', { month: 'short' });
-        }).reverse(),
-        series: purchaseOrdersData.map(item => item.count || 0).reverse()
-      }
-    };
-
-    const messages = {
-      total: messagesData[0]?.count || 0,
-      percent: calculateGrowthPercentage(messagesData, 'count'),
-      chart: {
-        categories: messagesData.map(item => {
-          const date = new Date(item._id);
-          return date.toLocaleDateString('en-US', { month: 'short' });
-        }).reverse(),
-        series: messagesData.map(item => item.count || 0).reverse()
-      }
-    };
-
-    const currentVisits = {
-      series: currentVisitsData.length > 0 ? currentVisitsData.map(item => ({
-        label: item._id || 'Unknown',
-        value: item.value || 0
-      })) : [
-        { label: 'Direct', value: 0 },
-        { label: 'Referral', value: 0 },
-        { label: 'Social', value: 0 },
-        { label: 'Search', value: 0 }
-      ]
-    };
-
-    const websiteVisits = {
-      categories: websiteVisitsData.length > 0 ? websiteVisitsData.map(item => {
-        const date = new Date(item._id);
-        return date.toLocaleDateString('en-US', { month: 'short' });
-      }) : [],
-      series: websiteVisitsData.length > 0 ? [
-        {
-          name: 'Visits',
-          data: websiteVisitsData.map(item => item.count || 0)
-        }
-      ] : [
-        {
-          name: 'Visits',
-          data: []
-        }
-      ]
-    };
-
-    // Return data in the format expected by frontend
-    res.status(200).json({
+    return res.json({
       success: true,
-      data: {
-        stats: {
-          weeklySales,
-          newUsers,
-          purchaseOrders,
-          messages
-        },
-        currentVisits,
-        websiteVisits
-      }
+      company: {
+        id: company._id,
+        name: company.name,
+      },
+      totals: {
+        policies: t.policies,
+        premium: t.premium,
+        commission: t.commission,
+        reward: t.reward,
+        profit: t.profit,
+      },
+      lastTotalsAt: company.lastTotalsAt || null,
+      updatedAt: company.updatedAt,
+      createdAt: company.createdAt,
     });
-
-  } catch (error) {
-    console.error('Analytics error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Error fetching analytics data'
-    });
+  } catch (err) {
+    console.error("getCompanySummary error:", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
   }
 };
+//pagination needs to be handled by frontend (Adarsh please take care )
+export const listCompanyPolicies = async (req, res) => {
+  try {
+    const { companyId } = req.params;
+
+    if (!mongoose.isValidObjectId(companyId)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid company id" });
+    }
+
+    // simple ownership guard
+    const companyExists = await Company.exists({
+      _id: companyId,
+      createdBy: req.user._id,
+    });
+    if (!companyExists) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Company not found" });
+    }
+
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(parseInt(req.query.limit) || 20, 200);
+    const skip = (page - 1) * limit;
+    const search = (req.query.search || "").trim();
+    const sort = buildSort(req.query.sort || "-createdAt");
+
+    const match = { company: new mongoose.Types.ObjectId(companyId) };
+    if (search) {
+      match.$or = [
+        { policyNo: { $regex: search, $options: "i" } },
+        { productName: { $regex: search, $options: "i" } },
+        { productVariant: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // **Key trick**: fetch limit+1 items to detect if there's a next page
+    const limitPlusOne = limit + 1;
+
+    const rows = await Policy.find(match)
+      .sort(sort)
+      .skip(skip)
+      .limit(limitPlusOne)
+      .select(
+        "productName policyNo premiumPayingTerm netPremium totalProfit commissionAmount commissionPct rewardAmount rewardPct totalRatePct policyTerm productVariant createdAt"
+      )
+      .lean();
+
+    const hasNext = rows.length > limit;
+    const trimmed = hasNext ? rows.slice(0, limit) : rows;
+
+    return res.json({
+      success: true,
+      data: trimmed.map((p) => ({
+        policyName: p.productName,
+        policyNumber: p.policyNo,
+        ppt: p.premiumPayingTerm,
+        netPrice: p.netPremium,
+        totalProfitAmount: p.totalProfit,
+        totalRatePct: p.totalRatePct,
+        commissionAmount: p.commissionAmount,
+        commissionPct: p.commissionPct,
+        rewardAmount: p.rewardAmount,
+        rewardPct: p.rewardPct,
+        policyTerm: p.policyTerm,
+        variant: p.productVariant,
+        createdAt: p.createdAt,
+      })),
+      pageInfo: {
+        page,
+        limit,
+        hasNext,
+        nextPage: hasNext ? page + 1 : null,
+      },
+    });
+  } catch (err) {
+    console.error("listCompanyPolicies error:", err);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
+  }
+};
+
+function buildSort(sortStr) {
+  const s = String(sortStr || "").trim();
+  if (!s) return { createdAt: -1 };
+  const dir = s.startsWith("-") ? -1 : 1;
+  const field = s.replace(/^-/, "");
+  return { [field]: dir };
+}

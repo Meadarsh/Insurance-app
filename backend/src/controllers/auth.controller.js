@@ -1,24 +1,33 @@
-import User from '../models/user.model.js';
-import httpStatus from 'http-status';
-import { generateAuthTokens, verifyToken } from '../utils/token.js';
+
+import httpStatus from "http-status";
+import User from "../models/user.model.js";
+import Company from "../models/company.model.js";
+import { generateAuthTokens, verifyToken } from "../utils/token.js";
+
+const fetchCompaniesFor = async (userId) => {
+  const companies = await Company.find({ createdBy: userId })
+    .select("_id name")
+    .sort({ name: 1 })
+    .lean();
+  return companies.map((c) => ({ id: c._id, name: c.name }));
+};
 
 const register = async (req, res, next) => {
   try {
     const { name, email, password, role } = req.body;
-    
     if (await User.isEmailTaken(email)) {
       return res.status(httpStatus.BAD_REQUEST).json({
         success: false,
-        message: 'Email already taken',
+        message: "Email already taken",
       });
     }
-    
+
     const user = await User.create({ name, email, password, role });
     const tokens = await generateAuthTokens(user);
-    
+    const companies = await fetchCompaniesFor(user._id);
+
     res.status(httpStatus.CREATED).json({
       success: true,
-      message: 'User registered successfully',
       user: {
         id: user._id,
         name: user.name,
@@ -26,6 +35,7 @@ const register = async (req, res, next) => {
         role: user.role,
         isVerified: user.isVerified,
       },
+      companies,
       tokens,
     });
   } catch (error) {
@@ -36,28 +46,26 @@ const register = async (req, res, next) => {
 const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
-    
     const user = await User.findOne({ email });
-    
+
     if (!user || !(await user.isPasswordMatch(password))) {
       return res.status(httpStatus.UNAUTHORIZED).json({
         success: false,
-        message: 'Incorrect email or password',
+        message: "Incorrect email or password",
       });
     }
-    
     if (!user.isActive) {
       return res.status(httpStatus.FORBIDDEN).json({
         success: false,
-        message: 'Account is deactivated',
+        message: "Account is deactivated",
       });
     }
-    
+
     const tokens = await generateAuthTokens(user);
-    
+    const companies = await fetchCompaniesFor(user._id);
+
     res.status(httpStatus.OK).json({
       success: true,
-      message: 'Login successful',
       user: {
         id: user._id,
         name: user.name,
@@ -65,6 +73,7 @@ const login = async (req, res, next) => {
         role: user.role,
         isVerified: user.isVerified,
       },
+      companies,
       tokens,
     });
   } catch (error) {
@@ -75,33 +84,28 @@ const login = async (req, res, next) => {
 const refreshAuth = async (req, res, next) => {
   try {
     const { refreshToken } = req.body;
-    
     if (!refreshToken) {
       return res.status(httpStatus.BAD_REQUEST).json({
         success: false,
-        message: 'Refresh token is required',
+        message: "Refresh token is required",
       });
     }
-    
+
     try {
-      // Verify the refresh token
-      const decoded = await verifyToken(refreshToken, 'refresh');
-      
-      // Find the user
+      const decoded = await verifyToken(refreshToken, "refresh");
       const user = await User.findById(decoded.sub);
       if (!user || !user.isActive) {
         return res.status(httpStatus.UNAUTHORIZED).json({
           success: false,
-          message: 'Invalid refresh token or user not found',
+          message: "Invalid refresh token or user not found",
         });
       }
-      
-      // Generate new tokens
+
       const tokens = await generateAuthTokens(user);
-      
+      const companies = await fetchCompaniesFor(user._id);
+
       res.status(httpStatus.OK).json({
         success: true,
-        message: 'Token refreshed successfully',
         user: {
           id: user._id,
           name: user.name,
@@ -109,12 +113,13 @@ const refreshAuth = async (req, res, next) => {
           role: user.role,
           isVerified: user.isVerified,
         },
+        companies,
         tokens,
       });
-    } catch (tokenError) {
+    } catch {
       return res.status(httpStatus.UNAUTHORIZED).json({
         success: false,
-        message: 'Invalid or expired refresh token',
+        message: "Invalid or expired refresh token",
       });
     }
   } catch (error) {
@@ -122,8 +127,4 @@ const refreshAuth = async (req, res, next) => {
   }
 };
 
-export default {
-  register,
-  login,
-  refreshAuth,
-};
+export default { register, login, refreshAuth };
