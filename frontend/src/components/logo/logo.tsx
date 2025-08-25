@@ -36,7 +36,7 @@ export function Logo({
 
   const singleLogo = (
     <svg
-      width="100%"
+      width="80%"
       height="100%"
       viewBox="0 0 512 512"
       fill="none"
