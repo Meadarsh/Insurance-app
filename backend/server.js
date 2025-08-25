@@ -13,7 +13,6 @@ import policyRoutes from './src/routes/policy.routes.js';
 import authRoutes from './src/routes/auth.route.js';
 import otpRoutes from './src/routes/otp.route.js';
 import masterRoutes from './src/routes/master.routes.js';
-import fileUploadRoutes from './src/routes/fileUpload.routes.js';
 import analyticsRoutes from './src/routes/analytics.routes.js';
 import userRoutes from './src/routes/user.routes.js';
 
@@ -56,7 +55,6 @@ app.use('/api/policies', policyRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/otp', otpRoutes);
 app.use('/api/masters', masterRoutes);
-app.use('/api/file-upload', fileUploadRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/users', userRoutes);
 
