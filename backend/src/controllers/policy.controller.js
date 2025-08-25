@@ -7,8 +7,6 @@ import Policy from "../models/policy.model.js";
 import Master from "../models/master.model.js";
 import Company from "../models/company.model.js";
 
-/** ---------- helpers ---------- */
-
 const parseDate = (dateString) => {
   if (!dateString) return null;
   const s = String(dateString).trim();
@@ -33,15 +31,7 @@ const extractCompanyFromName = (originalName, marker = "business") => {
   return raw.replace(/[^a-z0-9]+/g, "").trim();
 };
 
-/** ---------- controllers ---------- */
 
-/**
- * Upload business (policy) CSV
- * Overwrite-on-upload:
- *  - wipe existing policies for the company
- *  - insert enriched rows
- *  - SET company totals from this batch (policies, premium, commission, reward, profit)
- */
 export const uploadPolicies = async (req, res) => {
   try {
     if (!req.file) {
@@ -58,7 +48,7 @@ export const uploadPolicies = async (req, res) => {
         .json({ message: "Could not derive company from filename" });
     }
 
-    // Find company for the current user
+    // Ensure this company belongs to the current user
     const company = await Company.findOne({
       name: companyName,
       createdBy: req.user._id,
@@ -73,7 +63,7 @@ export const uploadPolicies = async (req, res) => {
 
     // Load master rules (with PPT min/max fields)
     const masterData = await Master.find({ company: company._id });
-    if (!masterData || masterData.length === 0) {
+    if (!masterData?.length) {
       return res
         .status(404)
         .json({ message: "No master rules found for this company" });
@@ -168,11 +158,10 @@ export const uploadPolicies = async (req, res) => {
         commissionAmount,
         rewardAmount,
         totalProfit,
-        matchedMasterId: master._id, // optional; add field in Policy model if you want this reference
+        matchedMasterId: master._id, // optional audit link
       });
     }
 
-    // If nothing matched, return gracefully
     if (enriched.length === 0) {
       return res.json({
         message: "No policies matched master; nothing to insert",
@@ -230,72 +219,5 @@ export const uploadPolicies = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Error processing file", error: error.message });
-  }
-};
-
-/**
- * Get all policies of a company with pagination
- */
-export const getPolicies = async (req, res) => {
-  try {
-    const { companyId } = req.params;
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
-
-    const [policies, total] = await Promise.all([
-      Policy.find({ company: companyId })
-        .skip(skip)
-        .limit(limit)
-        .sort({ createdAt: -1 }),
-      Policy.countDocuments({ company: companyId }),
-    ]);
-
-    res.json({
-      data: policies,
-      pagination: {
-        total,
-        page,
-        pages: Math.ceil(total / limit),
-        limit,
-      },
-    });
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-};
-
-/**
- * Get stats for a company (by product)
- */
-export const getPolicyStats = async (req, res) => {
-  try {
-    const { companyId } = req.params;
-
-    const stats = await Policy.aggregate([
-      { $match: { company: new mongoose.Types.ObjectId(companyId) } },
-      {
-        $group: {
-          _id: "$productName",
-          count: { $sum: 1 },
-          totalPremium: { $sum: "$netPremium" },
-          totalProfit: { $sum: "$totalProfit" },
-        },
-      },
-      {
-        $project: {
-          product: "$_id",
-          count: 1,
-          totalPremium: 1,
-          totalProfit: 1,
-          averagePremium: { $divide: ["$totalPremium", "$count"] },
-        },
-      },
-      { $sort: { count: -1 } },
-    ]);
-
-    return res.json(stats);
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
   }
 };

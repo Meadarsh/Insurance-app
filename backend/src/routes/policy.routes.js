@@ -1,51 +1,31 @@
-import express from 'express';
-import multer from 'multer';
-import {
-  createPolicy,
-  getPolicies,
-  getPolicyById,
-  updatePolicy,
-  deletePolicy,
-  uploadPolicies,
-  searchPolicies,
-  getPolicyStats
-} from '../controllers/policy.controller.js';
-import protect from '../middleware/auth.js';
+import express from "express";
+import multer from "multer";
+import protect from "../middleware/auth.js";
+import { uploadPolicies } from "../controllers/policy.controller.js";
+
 const router = express.Router();
 
-// Configure multer for file upload
-const storage = multer.memoryStorage();
 const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
-  },
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'text/csv' || 
-        file.mimetype === 'application/vnd.ms-excel' || 
-        file.originalname.endsWith('.csv')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only CSV files are allowed'), false);
-    }
-  }
+    const ok =
+      file.mimetype === "text/csv" ||
+      file.mimetype === "application/vnd.ms-excel" ||
+      /\.csv$/i.test(file.originalname);
+    if (!ok) return cb(new Error("Only CSV files are allowed"));
+    cb(null, true);
+  },
 });
 
-// Policy routes - READ operations (no auth required for commission section)
-router.get('/get', protect, getPolicies);
-router.get('/search', protect, searchPolicies);
-router.get('/stats', protect, getPolicyStats);
-router.get('/:id', protect, getPolicyById);
+router.post("/upload", protect, upload.single("file"), uploadPolicies);
 
-// Policy routes - WRITE operations (protected - require authentication)
-router.post('/', protect, createPolicy);
-router.put('/update/:id', protect, updatePolicy);
-router.delete('/delete/:id', protect, deletePolicy);
-
-// CSV Upload route - Protected (require authentication)
-router.post('/upload', protect, upload.single('file'), uploadPolicies);
-
-// CSV Upload route for Commission section - No authentication required
-router.post('/upload-commission', upload.single('file'), uploadPolicies);
+// Optional: Multer error handler for neat 400s instead of 500s
+router.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError || err.message?.includes("CSV")) {
+    return res.status(400).json({ success: false, message: err.message });
+  }
+  next(err);
+});
 
 export default router;

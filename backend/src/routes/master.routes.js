@@ -1,18 +1,13 @@
-import express from 'express';
-import { createMaster, getMasters, getMaster, updateMaster, deleteMaster, uploadCSV } from '../controllers/master.controller.js';
-import multer from 'multer';
-import protect from '../middleware/auth.js';
+import express from "express";
+import { uploadCSV } from "../controllers/master.controller.js";
+import multer from "multer";
+import protect from "../middleware/auth.js";
 
 const router = express.Router();
 
 // Configure multer for file upload
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ dest: "uploads/" });
 
-router.get('/get', protect, getMasters);
-router.post('/create', protect, createMaster);
-router.post('/upload-csv', protect, upload.single('file'), uploadCSV);
-router.put('/update/:id', protect, updateMaster);
-router.delete('/delete/:id', protect, deleteMaster);
-router.get('/get/:id', protect, getMaster);
+router.post("/upload-csv", protect, upload.single("file"), uploadCSV);
 
 export default router;

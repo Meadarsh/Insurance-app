@@ -4,7 +4,6 @@ import protect from "../middleware/auth.js";
 
 const router = express.Router();
 
-// Protected route (requires authentication)
 router.get("/company/:companyId", protect, getCompanySummary);
 router.get("/company/companyId" , protect, listCompanyPolicies);
 

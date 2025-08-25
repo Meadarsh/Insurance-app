@@ -44,7 +44,6 @@ const pct = (v) =>
       .replace("%", "")
   ) || 0;
 
-/** ---------- controllers ---------- */
 
 // 📌 Upload & save Master CSV (supports PPT 11+ / ranges) with overwrite-on-upload
 export const uploadMasterCSV = async (req, res) => {
@@ -161,7 +160,6 @@ export const uploadMasterCSV = async (req, res) => {
   }
 };
 
-// 📌 Get all master rows for a company (optional)
 export const getCompanyMasters = async (req, res) => {
   try {
     const company = await Company.findOne({
