@@ -1,36 +1,53 @@
 // controllers/policy.controller.js
 import mongoose from "mongoose";
-import Policy from "../models/policy.model.js";
-import Master from "../models/master.model.js";
-import Company from "../models/company.model.js";
 import csvParser from "csv-parser";
 import { Readable } from "stream";
 
+import Policy from "../models/policy.model.js";
+import Master from "../models/master.model.js";
+import Company from "../models/company.model.js";
+
+/** ---------- helpers ---------- */
 
 const parseDate = (dateString) => {
   if (!dateString) return null;
-  if (dateString.includes("/")) {
-    const [month, day, year] = dateString.split("/").map(Number);
-    return new Date(year, month - 1, day);
+  const s = String(dateString).trim();
+  if (!s) return null;
+  if (s.includes("/")) {
+    const [mm, dd, yy] = s.split("/").map(Number);
+    const d = new Date(yy, (mm || 1) - 1, dd || 1);
+    return isNaN(d.getTime()) ? null : d;
   }
-  if (dateString.includes("-")) return new Date(dateString);
+  if (s.includes("-")) {
+    const d = new Date(s);
+    return isNaN(d.getTime()) ? null : d;
+  }
   return null;
 };
 
+// e.g., "companyAbusiness.csv" -> "companya"
 const extractCompanyFromName = (originalName, marker = "business") => {
   const s = String(originalName || "").toLowerCase();
   const parts = s.split(marker);
-  const raw = (parts[0] || s).replace(/\.[^.]+$/, ""); // trim extension
+  const raw = (parts[0] || s).replace(/\.[^.]+$/, ""); // drop extension
   return raw.replace(/[^a-z0-9]+/g, "").trim();
 };
 
+/** ---------- controllers ---------- */
+
+/**
+ * Upload business (policy) CSV
+ * Overwrite-on-upload:
+ *  - wipe existing policies for the company
+ *  - insert enriched rows
+ *  - SET company totals from this batch (policies, premium, commission, reward, profit)
+ */
 export const uploadPolicies = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
 
-    // Derive company from filename
     const companyName = extractCompanyFromName(
       req.file.originalname,
       "business"
@@ -41,18 +58,20 @@ export const uploadPolicies = async (req, res) => {
         .json({ message: "Could not derive company from filename" });
     }
 
-    // Find company belonging to user
+    // Find company for the current user
     const company = await Company.findOne({
       name: companyName,
       createdBy: req.user._id,
     });
     if (!company) {
-      return res.status(404).json({
-        message: `Company ${companyName} not found. Upload master first.`,
-      });
+      return res
+        .status(404)
+        .json({
+          message: `Company ${companyName} not found. Upload master first.`,
+        });
     }
 
-    // Load master rules for this company (with PPT min/max)
+    // Load master rules (with PPT min/max fields)
     const masterData = await Master.find({ company: company._id });
     if (!masterData || masterData.length === 0) {
       return res
@@ -60,7 +79,7 @@ export const uploadPolicies = async (req, res) => {
         .json({ message: "No master rules found for this company" });
     }
 
-    // Parse CSV rows
+    // Parse CSV rows from buffer
     const rows = [];
     const readableStream = new Readable();
     readableStream.push(req.file.buffer);
@@ -70,19 +89,28 @@ export const uploadPolicies = async (req, res) => {
       readableStream
         .pipe(csvParser())
         .on("data", (data) => {
+          const productName = data["Product Name"]
+            ? String(data["Product Name"]).trim()
+            : "";
+          const productVariant = data["Product Variant"]
+            ? String(data["Product Variant"]).trim()
+            : "";
+
           rows.push({
             company: company._id,
-            productName: data["Product Name"]?.trim(),
-            productVariant: data["Product Variant"]?.trim(),
+            productName,
+            productVariant,
             premiumPayingTerm: Number(data["Premium Paying Term"] || 0),
             policyTerm: Number(data["Policy Term"] || 0),
-            policyNo: data["Policy No"],
+            policyNo: data["Policy No"]
+              ? String(data["Policy No"]).trim()
+              : undefined,
             netPremium: Number(data["Net Premium"] || 0),
             sumAssured: Number(data["Sum Assured"] || 0),
             transactionDate: parseDate(data["Transaction Date"]),
             cancellationDate: parseDate(data["Cancellation Date"]),
-            customerName: data["Customer Name"],
-            agentName: data["Agent Name"],
+            customerName: data["Customer Name"] || undefined,
+            agentName: data["Agent Name"] || undefined,
           });
         })
         .on("end", resolve)
@@ -92,7 +120,7 @@ export const uploadPolicies = async (req, res) => {
     const errors = [];
     const enriched = [];
 
-    // Match + enrich
+    // Match against master + compute amounts
     for (const policy of rows) {
       const policyName = (policy.productName || "").toLowerCase();
       const policyVariant = (policy.productVariant || "").toLowerCase();
@@ -140,23 +168,66 @@ export const uploadPolicies = async (req, res) => {
         commissionAmount,
         rewardAmount,
         totalProfit,
-        matchedMasterId: master._id, // optional; remove if you don't want it in the schema
+        matchedMasterId: master._id, // optional; add field in Policy model if you want this reference
       });
     }
 
-    if (enriched.length > 0) {
-      await Policy.insertMany(enriched);
+    // If nothing matched, return gracefully
+    if (enriched.length === 0) {
+      return res.json({
+        message: "No policies matched master; nothing to insert",
+        totalProcessed: 0,
+        totalErrors: errors.length,
+        errors,
+      });
     }
 
-    res.json({
-      message: "Policies uploaded successfully",
+    // Compute batch totals
+    const batchTotals = enriched.reduce(
+      (acc, p) => {
+        acc.policies += 1;
+        acc.premium += Number(p.netPremium || 0);
+        acc.commission += Number(p.commissionAmount || 0);
+        acc.reward += Number(p.rewardAmount || 0);
+        acc.profit += Number(p.totalProfit || 0);
+        return acc;
+      },
+      { policies: 0, premium: 0, commission: 0, reward: 0, profit: 0 }
+    );
+
+    // Overwrite-on-upload: wipe old policies, insert new, and SET totals
+    const session = await mongoose.startSession();
+    await session.withTransaction(async () => {
+      await Policy.deleteMany({ company: company._id }, { session });
+      await Policy.insertMany(enriched, { session });
+
+      await Company.updateOne(
+        { _id: company._id, createdBy: req.user._id },
+        {
+          $set: {
+            "totals.policies": batchTotals.policies,
+            "totals.premium": batchTotals.premium,
+            "totals.commission": batchTotals.commission,
+            "totals.reward": batchTotals.reward,
+            "totals.profit": batchTotals.profit,
+            lastTotalsAt: new Date(),
+          },
+        },
+        { session }
+      );
+    });
+    session.endSession();
+
+    return res.json({
+      message: "Policies uploaded successfully (replaced previous data)",
       totalProcessed: enriched.length,
+      totals: batchTotals,
       totalErrors: errors.length,
       errors,
     });
   } catch (error) {
     console.error("Upload error:", error);
-    res
+    return res
       .status(500)
       .json({ message: "Error processing file", error: error.message });
   }
@@ -172,12 +243,13 @@ export const getPolicies = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const policies = await Policy.find({ company: companyId })
-      .skip(skip)
-      .limit(limit)
-      .sort({ createdAt: -1 });
-
-    const total = await Policy.countDocuments({ company: companyId });
+    const [policies, total] = await Promise.all([
+      Policy.find({ company: companyId })
+        .skip(skip)
+        .limit(limit)
+        .sort({ createdAt: -1 }),
+      Policy.countDocuments({ company: companyId }),
+    ]);
 
     res.json({
       data: policies,
@@ -189,7 +261,7 @@ export const getPolicies = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
 
@@ -222,8 +294,8 @@ export const getPolicyStats = async (req, res) => {
       { $sort: { count: -1 } },
     ]);
 
-    res.json(stats);
+    return res.json(stats);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
