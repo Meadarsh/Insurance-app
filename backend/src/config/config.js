@@ -12,6 +12,8 @@ export default {
     refreshExpirationDays: process.env.JWT_REFRESH_EXPIRATION_DAYS || 30,
   },
   mongo: {
-    uri: process.env.MONGO_URI || "mongodb://localhost:27017/",
+    uri:
+      process.env.MONGO_URI ||
+      "mongodb://127.0.0.1:27017/insurance-app?retryWrites=false",
   },
 };

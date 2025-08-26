@@ -73,9 +73,7 @@ export function AnalyticsWidgetSummary({
       }}
     >
       <Iconify width={20} icon={total < 0 ? 'eva:trending-down-fill' : 'eva:trending-up-fill'} />
-      <Box component="span" sx={{ typography: 'subtitle2' }}>
-        
-      </Box>
+      <Box component="span" sx={{ typography: 'subtitle2' }}/>
     </Box>
   );
 

@@ -1,5 +1,5 @@
-import mongoose from 'mongoose';
-import config from './config.js';
+import mongoose from "mongoose";
+import config from "./config.js";
 
 // Cache the database connection to prevent multiple connections
 let cached = global.mongoose;
@@ -22,15 +22,19 @@ async function connectDB() {
       bufferCommands: false, // Disable mongoose buffering
       serverSelectionTimeoutMS: 10000, // Timeout after 10s instead of 30s for faster failure
       socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+      retryWrites: false, // Disable retryable writes
     };
 
-    cached.promise = mongoose.connect(config.mongo.uri, opts).then((mongoose) => {
-      console.log(`MongoDB connected successfully ${config.mongo.uri}`);
-      return mongoose;
-    }).catch((error) => {
-      console.error('MongoDB connection error:', error);
-      throw error;
-    });
+    cached.promise = mongoose
+      .connect(config.mongo.uri, opts)
+      .then((mongoose) => {
+        console.log(`MongoDB connected successfully ${config.mongo.uri}`);
+        return mongoose;
+      })
+      .catch((error) => {
+        console.error("MongoDB connection error:", error);
+        throw error;
+      });
   }
 
   try {
@@ -44,26 +48,26 @@ async function connectDB() {
 }
 
 // Handle connection events
-mongoose.connection.on('connected', () => {
-  console.log('Mongoose connected to DB');
+mongoose.connection.on("connected", () => {
+  console.log("Mongoose connected to DB");
 });
 
-mongoose.connection.on('error', (err) => {
-  console.error('Mongoose connection error:', err);
+mongoose.connection.on("error", (err) => {
+  console.error("Mongoose connection error:", err);
 });
 
-mongoose.connection.on('disconnected', () => {
-  console.log('Mongoose disconnected');
+mongoose.connection.on("disconnected", () => {
+  console.log("Mongoose disconnected");
 });
 
 // Close the Mongoose connection when the Node process ends
-process.on('SIGINT', async () => {
+process.on("SIGINT", async () => {
   try {
     await mongoose.connection.close();
-    console.log('Mongoose connection closed through app termination');
+    console.log("Mongoose connection closed through app termination");
     process.exit(0);
   } catch (err) {
-    console.error('Error closing MongoDB connection:', err);
+    console.error("Error closing MongoDB connection:", err);
     process.exit(1);
   }
 });
