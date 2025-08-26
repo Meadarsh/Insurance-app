@@ -70,7 +70,7 @@ export const analyticsAPI = {
     }
 
     try {
-      const response = await ApiInstance.get('/analytics/test');
+      const response = await ApiInstance.get('/analytics/dashboard');
       
       if (response.status !== 200) {
         throw new Error(`HTTP error! status: ${response.status}`);

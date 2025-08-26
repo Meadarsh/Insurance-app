@@ -220,7 +220,7 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
                 <TableCell>Customer Name</TableCell>
                 <TableCell>Product Name</TableCell>
                 <TableCell>Premium</TableCell>
-                <TableCell>Sum Assured</TableCell>
+                <TableCell>Reward</TableCell>
                 <TableCell>Master Product</TableCell>
                 <TableCell>Actions</TableCell>
               </TableRow>
@@ -232,7 +232,7 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
                   <TableCell>{policy.customerName || 'N/A'}</TableCell>
                   <TableCell>{policy.productName || 'N/A'}</TableCell>
                   <TableCell>₹{policy.PREMIUM?.toLocaleString() || '0'}</TableCell>
-                  <TableCell>₹{policy.sumAssured?.toLocaleString() || '0'}</TableCell>
+                  <TableCell>₹{policy.reward?.toLocaleString() || '0'}</TableCell>
                   <TableCell>
                     {policy.masterRef ? (
                       <Chip 

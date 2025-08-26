@@ -40,30 +40,7 @@ interface ReconciliationRecord {
 export default function CommissionView() {
   const [activeTab, setActiveTab] = useState(0);
   const [masterDataRefreshTrigger, setMasterDataRefreshTrigger] = useState(0);
-  const [reconciliationData, setReconciliationData] = useState<ReconciliationRecord[]>([
-    {
-      id: '1',
-      source: 'Master',
-      month: 'July 2024',
-      fileName: 'master_data.csv',
-      uploadedAt: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
-      totalProcessedRecords: 12450,
-      totalReconValue: 23820349,
-      outputReconValue: 18765432,
-      status: 'PROCESSED',
-    },
-    {
-      id: '2',
-      source: 'Vendor 1',
-      month: 'July 2024',
-      fileName: 'vendor1_data.csv',
-      uploadedAt: new Date(Date.now() - 43200000).toISOString(), // 12 hours ago
-      totalProcessedRecords: 8430,
-      totalReconValue: 4384634,
-      outputReconValue: 3987654,
-      status: 'PROCESSED',
-    },
-  ]);
+
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -73,11 +50,6 @@ export default function CommissionView() {
   const [masterFileDialogOpen, setMasterFileDialogOpen] = useState(false);
   const [vendorFileDialogOpen, setVendorFileDialogOpen] = useState(false);
   
-  // Filters
-  const [sourceFilter, setSourceFilter] = useState('All');
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [monthFilter, setMonthFilter] = useState('All');
-
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
   };
@@ -86,15 +58,6 @@ export default function CommissionView() {
     setIsRefreshing(true);
     // Simulate data refresh by updating timestamps and regenerating some data
     setTimeout(() => {
-      setReconciliationData(prev => 
-        prev.map(record => ({
-          ...record,
-          uploadedAt: new Date().toISOString(),
-          totalProcessedRecords: record.totalProcessedRecords + Math.floor(Math.random() * 100),
-          totalReconValue: record.totalReconValue + Math.floor(Math.random() * 100000),
-          outputReconValue: record.outputReconValue + Math.floor(Math.random() * 80000),
-        }))
-      );
       setIsRefreshing(false);
       setSuccessMessage('Data refreshed successfully!');
       setShowSuccessMessage(true);
@@ -115,7 +78,6 @@ export default function CommissionView() {
       status: 'PROCESSED',
     };
     
-    setReconciliationData(prev => [newRecord, ...prev]);
     setSuccessMessage(`${source} file "${fileName}" uploaded successfully! Processing ${newRecord.totalProcessedRecords.toLocaleString()} records.`);
     setShowSuccessMessage(true);
     setIsUploading(false);
@@ -146,78 +108,29 @@ export default function CommissionView() {
       status: 'PROCESSING',
     };
     
-    setReconciliationData(prev => [newRecord, ...prev]);
     setSuccessMessage(`Vendor file "${fileName}" uploaded successfully! Processing ${newRecord.totalProcessedRecords.toLocaleString()} records for ${vendor}.`);
     setShowSuccessMessage(true);
     setIsUploading(false);
   };
 
-  const handleDownloadFormat = (type: 'master' | 'vendor') => {
-    // Create sample format data based on type
-    let csvContent = '';
-    let filename = '';
-    
-    if (type === 'master') {
-      filename = 'master_format.csv';
-      csvContent = `Product Name,Premium Paying Term,Policy Term,Policy Number,Policy Prices,Product Variant,Total Rate,Commission,Reward
-Life Insurance Pro,10,20,POL001,1000.00,Standard,5.5,2.5,1.0
-Health Shield Plus,5+,15,POL002,800.00,Premium,4.8,2.0,0.8
-Auto Protect Gold,3,10,POL003,600.00,Basic,6.2,3.0,1.2`;
-    } else {
-      filename = 'vendor_format.csv';
-      csvContent = `Vendor Name,Policy Number,Commission Amount,Payment Date,Status
-Vendor A,POL001,180.00,2024-01-15,Paid
-Vendor B,POL002,96.00,2024-01-20,Paid
-Vendor C,POL003,60.00,2024-01-25,Pending`;
-    }
-    
-    // Create and download the file
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    setSuccessMessage(`${type === 'master' ? 'Master' : 'Vendor'} format file downloaded successfully!`);
-    setShowSuccessMessage(true);
-  };
+  const handleDownloadmasterAndPolicyFormat = () => {
+    // Function to trigger file download
+    const downloadFile = (url: string, filename: string) => {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
 
-  const filteredData = reconciliationData.filter(record => {
-    if (sourceFilter !== 'All' && record.source !== sourceFilter) return false;
-    if (statusFilter !== 'All' && record.status !== statusFilter) return false;
-    if (monthFilter !== 'All' && record.month !== monthFilter) return false;
-    return true;
-  });
-
-  const dynamicSummaryData = {
-    masterFileCount: reconciliationData.filter(record => record.source === 'Master').length,
-    masterFileAmount: reconciliationData
-      .filter(record => record.source === 'Master')
-      .reduce((sum, record) => sum + record.totalReconValue, 0),
-    policyFileCount: reconciliationData.filter(record => record.source === 'Policy').length,
-    policyFileAmount: reconciliationData
-      .filter(record => record.source === 'Policy')
-      .reduce((sum, record) => sum + record.totalReconValue, 0),
-    vendorFileCount: reconciliationData.filter(record => record.source !== 'Master' && record.source !== 'Policy').length,
-    vendorFileAmount: reconciliationData
-      .filter(record => record.source !== 'Master' && record.source !== 'Policy')
-      .reduce((sum, record) => sum + record.totalReconValue, 0),
-    delta: reconciliationData
-      .filter(record => record.source === 'Master')
-      .reduce((sum, record) => sum + record.totalReconValue, 0) -
-      reconciliationData
-        .filter(record => record.source !== 'Master' && record.source !== 'Policy')
-        .reduce((sum, record) => sum + record.totalReconValue, 0),
-  };
-
-  const clearFilters = () => {
-    setSourceFilter('All');
-    setStatusFilter('All');
-    setMonthFilter('All');
+    // Download master format
+    downloadFile('/format-files/master format.csv', 'master_format.csv');
+    
+    // Download policy format after a small delay to ensure both downloads work
+    setTimeout(() => {
+      downloadFile('/format-files/policy format.csv', 'policy_format.csv');
+    }, 300);
   };
 
   return (
@@ -269,13 +182,13 @@ Vendor C,POL003,60.00,2024-01-25,Pending`;
           <Button
             variant="outlined"
             startIcon={<Description />}
-            onClick={() => handleDownloadFormat('master')}
+            onClick={() => handleDownloadmasterAndPolicyFormat()}
             sx={{ px: 3, py: 1.5 }}
           >
             Download Master/Policy Format
           </Button>
           
-          <Button
+          {/* <Button
             variant="contained"
             startIcon={<CloudUpload />}
             onClick={() => setVendorFileDialogOpen(true)}
@@ -283,24 +196,24 @@ Vendor C,POL003,60.00,2024-01-25,Pending`;
             sx={{ px: 3, py: 1.5 }}
           >
             {isUploading ? 'Uploading...' : 'Upload Vendor File'}
-          </Button>
+          </Button> */}
           
-          <Button
+          {/* <Button
             variant="outlined"
             startIcon={<Description />}
             onClick={() => handleDownloadFormat('vendor')}
             sx={{ px: 3, py: 1.5 }}
           >
             Download Vendor Format
-          </Button>
+          </Button> */}
         </Box>
 
         {/* Tabs */}
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
           <Tabs value={activeTab} onChange={handleTabChange} aria-label="commission tabs">
-            <Tab label="Dashboard" />
+            {/* <Tab label="Dashboard" />
             <Tab label="Upload File" />
-            <Tab label="Explore Records" />
+            <Tab label="Explore Records" /> */}
             <Tab label="Master Data" />
             <Tab label="Policy Data" />
             <Tab label="Generate Report" />
@@ -308,10 +221,10 @@ Vendor C,POL003,60.00,2024-01-25,Pending`;
         </Box>
 
         {/* Tab Content */}
-        {activeTab === 0 && (
+        {/* {activeTab === 0 && (
           <Box>
             {/* Add Filters Section */}
-            <Card sx={{ mb: 3 }}>
+            {/* <Card sx={{ mb: 3 }}>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                   <FilterList color="primary" />
@@ -377,10 +290,10 @@ Vendor C,POL003,60.00,2024-01-25,Pending`;
                   </Button>
                 </Box>
               </CardContent>
-            </Card>
+            </Card> */}
 
             {/* Summary Cards and Reconciliation Reports */}
-            <ReconciliationSummary summaryData={dynamicSummaryData} />
+           {/*} <ReconciliationSummary summaryData={dynamicSummaryData} />
           </Box>
         )}
 
@@ -394,21 +307,21 @@ Vendor C,POL003,60.00,2024-01-25,Pending`;
           <Box>
             <CommissionTable data={filteredData} />
           </Box>
-        )}
+        )} */}
 
-        {activeTab === 3 && (
+        {activeTab === 0 && (
           <Box>
             <MasterDataTable refreshTrigger={masterDataRefreshTrigger} />
           </Box>
         )}
 
-        {activeTab === 4 && (
+        {activeTab === 1 && (
           <Box>
             <PolicyDataTable refreshTrigger={masterDataRefreshTrigger} />
           </Box>
         )}
 
-        {activeTab === 5 && (
+        {activeTab === 2 && (
           <Box>
             <Card>
               <CardContent sx={{ textAlign: 'center', py: 6 }}>

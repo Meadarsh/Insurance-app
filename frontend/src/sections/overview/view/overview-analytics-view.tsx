@@ -7,14 +7,11 @@ import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import ErrorIcon from '@mui/icons-material/Error';
-
 import { DashboardContent } from 'src/layouts/dashboard';
 import { analyticsAPI, type AnalyticsData } from 'src/services/analytics';
-
-import { AnalyticsCurrentVisits } from '../analytics-current-visits';
-import { AnalyticsWebsiteVisits } from '../analytics-website-visits';
 import { AnalyticsWidgetSummary } from '../analytics-widget-summary';
+import { WorkspacesPopover } from 'src/layouts/components/workspaces-popover';
+import { MenuItem, Select } from '@mui/material';
 
 // ----------------------------------------------------------------------
 
@@ -104,6 +101,12 @@ export function OverviewAnalyticsView() {
     return () => clearInterval(interval);
   }, [fetchAnalyticsData]); // Removed analyticsData and loading/refreshing from dependencies
 
+  const [company, setCompany] = useState('');
+
+  const handleChangeCompany = (companyData: string) => {
+    setCompany(companyData);
+  };
+
   // Show loading only on initial load
   if (loading && !analyticsData) {
     return (
@@ -142,13 +145,27 @@ export function OverviewAnalyticsView() {
   // Always show dashboard, even if there's an error (will use fallback data)
   const { stats, currentVisits, websiteVisits } = analyticsData || {};
 
+
+
   return (
     <DashboardContent maxWidth="xl">
       {/* Header with status indicator */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={{ xs: 3, md: 5 }}>
+        <Box>
         <Typography variant="h4">
           Hi, Welcome back 👋
         </Typography>
+        <Select
+          label="Select Company"
+          value={company}
+          sx={{mt:2,width: '200px' }}
+          onChange={(e) => handleChangeCompany(e.target.value)}>
+            <MenuItem value="">Select Company</MenuItem>
+            <MenuItem value="company1">Company 1</MenuItem>
+            <MenuItem value="company2">Company 2</MenuItem>
+            <MenuItem value="company3">Company 3</MenuItem>
+        </Select>
+        </Box>
         <Box display="flex" gap={2} alignItems="center">
           {error && (
             <Alert severity="info" sx={{ maxWidth: 300 }}>
@@ -167,7 +184,7 @@ export function OverviewAnalyticsView() {
       <Grid container spacing={3}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <AnalyticsWidgetSummary
-            title="Weekly sales"
+            title="Premium "
             percent={stats?.weeklySales?.percent || 0}
             total={stats?.weeklySales?.total || 0}
             icon={<img alt="Weekly sales" src="/assets/icons/glass/ic-glass-bag.svg" />}
@@ -188,7 +205,7 @@ export function OverviewAnalyticsView() {
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <AnalyticsWidgetSummary
-            title="Purchase orders"
+            title="Reward"
             percent={stats?.purchaseOrders?.percent || 0}
             total={stats?.purchaseOrders?.total || 0}
             color="warning"
@@ -199,7 +216,7 @@ export function OverviewAnalyticsView() {
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <AnalyticsWidgetSummary
-            title="Messages"
+            title="Additional Reward"
             percent={stats?.messages?.percent || 0}
             total={stats?.messages?.total || 0}
             color="error"
@@ -208,21 +225,6 @@ export function OverviewAnalyticsView() {
           />
         </Grid>
 
-        {/* Charts Section */}
-        <Grid size={{ xs: 12, md: 6, lg: 4 }} height={{ xs: 400, md: 600 }}>
-          <AnalyticsCurrentVisits
-            title="Current visits"
-            chart={currentVisits || { series: [] }}
-          />
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 6, lg: 8 }} height={{ xs: 400, md: 600 }}>
-          <AnalyticsWebsiteVisits
-            title="Website visits"
-            subheader="(+43%) than last year"
-            chart={websiteVisits || { categories: [], series: [] }}
-          />
-        </Grid>
       </Grid>
 
       {/* Enhanced Footer with Refresh Button */}
