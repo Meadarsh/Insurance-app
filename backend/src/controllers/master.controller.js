@@ -44,7 +44,6 @@ const pct = (v) =>
       .replace("%", "")
   ) || 0;
 
-
 // 📌 Upload & save Master CSV (supports PPT 11+ / ranges) with overwrite-on-upload
 export const uploadMasterCSV = async (req, res) => {
   if (!req.file) {
@@ -54,6 +53,7 @@ export const uploadMasterCSV = async (req, res) => {
   }
 
   const results = [];
+  const USE_TX = process.env.USE_TRANSACTIONS === "true";
 
   try {
     // derive company from filename (e.g., "companyArate.csv" -> "companya")
@@ -80,19 +80,14 @@ export const uploadMasterCSV = async (req, res) => {
             const { min: pptMin, max: pptMax } = parsePPT(
               row["Premium Paying Term"]
             );
-
             results.push({
               company: company._id,
-              // model setters will lowercase/trim, but we still guard here
               productName: (row["Product Name"] || "").trim(),
               productVariant: (row["Product Variant"] || "").trim(),
-
               premiumPayingTermMin: pptMin,
               premiumPayingTermMax: pptMax, // null = open-ended
-
               policyTerm: Number(row["Policy Term"] || 0),
               policyNumber: row["Policy Number"] || "",
-
               totalRate: pct(row["Total Rate"]),
               commission: pct(row["Commission"]),
               reward: pct(row["Reward"]),
@@ -106,20 +101,42 @@ export const uploadMasterCSV = async (req, res) => {
     });
 
     if (results.length === 0) {
-      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
       return res
         .status(400)
         .json({ success: false, error: "CSV had no valid rows" });
     }
 
-    // OVERWRITE-ON-UPLOAD (atomic)
-    const session = await mongoose.startSession();
-    await session.withTransaction(async () => {
-      // 1) wipe old rules & policies for this company
-      await Master.deleteMany({ company: company._id }, { session });
-      await Policy.deleteMany({ company: company._id }, { session });
-
-      // 2) reset company totals (homepage)
+    // ----- OVERWRITE-ON-UPLOAD -----
+    if (USE_TX) {
+      // atomic (replica set / Atlas)
+      const session = await mongoose.startSession();
+      try {
+        await session.withTransaction(async () => {
+          await Master.deleteMany({ company: company._id }, { session });
+          await Policy.deleteMany({ company: company._id }, { session });
+          await Company.updateOne(
+            { _id: company._id, createdBy: req.user._id },
+            {
+              $set: {
+                "totals.policies": 0,
+                "totals.premium": 0,
+                "totals.commission": 0,
+                "totals.reward": 0,
+                "totals.profit": 0,
+                lastTotalsAt: new Date(),
+              },
+            },
+            { session }
+          );
+          await Master.insertMany(results, { session });
+        });
+      } finally {
+        await session.endSession();
+      }
+    } else {
+      // sequential (local dev without replica set)
+      await Master.deleteMany({ company: company._id });
+      await Policy.deleteMany({ company: company._id });
       await Company.updateOne(
         { _id: company._id, createdBy: req.user._id },
         {
@@ -131,16 +148,10 @@ export const uploadMasterCSV = async (req, res) => {
             "totals.profit": 0,
             lastTotalsAt: new Date(),
           },
-        },
-        { session }
+        }
       );
-
-      // 3) insert new master rows
-      await Master.insertMany(results, { session });
-    });
-    session.endSession();
-
-    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path); // cleanup
+      await Master.insertMany(results);
+    }
 
     return res.status(201).json({
       success: true,
@@ -151,12 +162,14 @@ export const uploadMasterCSV = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    if (req.file?.path && fs.existsSync(req.file.path)) {
-      try {
-        fs.unlinkSync(req.file.path);
-      } catch {}
-    }
     return res.status(500).json({ success: false, error: error.message });
+  } finally {
+    // cleanup temp file if present
+    try {
+      if (req.file?.path && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+    } catch {}
   }
 };
 

@@ -30,8 +30,6 @@ const extractCompanyFromName = (originalName, marker = "business") => {
   const raw = (parts[0] || s).replace(/\.[^.]+$/, ""); // drop extension
   return raw.replace(/[^a-z0-9]+/g, "").trim();
 };
-
-
 export const uploadPolicies = async (req, res) => {
   try {
     if (!req.file) {
@@ -48,7 +46,6 @@ export const uploadPolicies = async (req, res) => {
         .json({ message: "Could not derive company from filename" });
     }
 
-    // Ensure this company belongs to the current user
     const company = await Company.findOne({
       name: companyName,
       createdBy: req.user._id,
@@ -61,7 +58,6 @@ export const uploadPolicies = async (req, res) => {
         });
     }
 
-    // Load master rules (with PPT min/max fields)
     const masterData = await Master.find({ company: company._id });
     if (!masterData?.length) {
       return res
@@ -108,6 +104,7 @@ export const uploadPolicies = async (req, res) => {
     });
 
     const errors = [];
+    const enriched = []; // ✅ ADD THIS
 
     // Match against master + compute amounts
     for (const policy of rows) {
@@ -157,7 +154,7 @@ export const uploadPolicies = async (req, res) => {
         commissionAmount,
         rewardAmount,
         totalProfit,
-        matchedMasterId: master._id, // optional audit link
+        matchedMasterId: master._id,
       });
     }
 
@@ -184,27 +181,40 @@ export const uploadPolicies = async (req, res) => {
     );
 
     // Overwrite-on-upload: wipe old policies, insert new, and SET totals
-    const session = await mongoose.startSession();
-    await session.withTransaction(async () => {
-      await Policy.deleteMany({ company: company._id }, { session });
-      await Policy.insertMany(enriched, { session });
+    const totalsUpdate = {
+      "totals.policies": batchTotals.policies,
+      "totals.premium": batchTotals.premium,
+      "totals.commission": batchTotals.commission,
+      "totals.reward": batchTotals.reward,
+      "totals.profit": batchTotals.profit,
+      lastTotalsAt: new Date(),
+    };
 
+    const USE_TX = process.env.USE_TRANSACTIONS === "true";
+
+    if (USE_TX) {
+      const session = await mongoose.startSession();
+      try {
+        await session.withTransaction(async () => {
+          await Policy.deleteMany({ company: company._id }, { session });
+          await Policy.insertMany(enriched, { session });
+          await Company.updateOne(
+            { _id: company._id, createdBy: req.user._id },
+            { $set: totalsUpdate },
+            { session }
+          );
+        });
+      } finally {
+        await session.endSession();
+      }
+    } else {
+      await Policy.deleteMany({ company: company._id });
+      await Policy.insertMany(enriched);
       await Company.updateOne(
         { _id: company._id, createdBy: req.user._id },
-        {
-          $set: {
-            "totals.policies": batchTotals.policies,
-            "totals.premium": batchTotals.premium,
-            "totals.commission": batchTotals.commission,
-            "totals.reward": batchTotals.reward,
-            "totals.profit": batchTotals.profit,
-            lastTotalsAt: new Date(),
-          },
-        },
-        { session }
+        { $set: totalsUpdate }
       );
-    });
-    session.endSession();
+    }
 
     return res.json({
       message: "Policies uploaded successfully (replaced previous data)",
