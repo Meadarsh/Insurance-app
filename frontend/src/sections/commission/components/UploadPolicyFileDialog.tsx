@@ -36,28 +36,28 @@ export default function UploadPolicyFileDialog({
     message: '',
     severity: 'success' as 'success' | 'error' | 'warning' | 'info'
   });
-  const [masterDataExists, setMasterDataExists] = useState(false);
-  const [checkingMasterData, setCheckingMasterData] = useState(true);
+  const [masterDataExists, setMasterDataExists] = useState(true);
+  const [checkingMasterData, setCheckingMasterData] = useState(false);
 
   // Check if master data exists
-  useEffect(() => {
-    const checkMasterData = async () => {
-      try {
-        setCheckingMasterData(true);
-        const response = await masterAPI.getMasters();
-        setMasterDataExists(response.count > 0);
-      } catch (error) {
-        console.error('Error checking master data:', error);
-        setMasterDataExists(false);
-      } finally {
-        setCheckingMasterData(false);
-      }
-    };
+  // useEffect(() => {
+  //   const checkMasterData = async () => {
+  //     try {
+  //       setCheckingMasterData(true);
+  //       const response = await masterAPI.getMasters();
+  //       setMasterDataExists(response.count > 0);
+  //     } catch (error) {
+  //       console.error('Error checking master data:', error);
+  //       setMasterDataExists(false);
+  //     } finally {
+  //       setCheckingMasterData(false);
+  //     }
+  //   };
 
-    if (open) {
-      checkMasterData();
-    }
-  }, [open]);
+  //   if (open) {
+  //     checkMasterData();
+  //   }
+  // }, [open]);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -76,9 +76,6 @@ export default function UploadPolicyFileDialog({
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
-      console.log('Policy file dropped:', file);
-      console.log('File size:', file.size);
-      console.log('File type:', file.type);
       setUploadedFile(file);
     }
   }, []);
@@ -86,9 +83,6 @@ export default function UploadPolicyFileDialog({
   const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      console.log('Policy file selected:', file);
-      console.log('File size:', file.size);
-      console.log('File type:', file.type);
       setUploadedFile(file);
     }
   }, []);
@@ -104,15 +98,9 @@ export default function UploadPolicyFileDialog({
       });
       return;
     }
-
-    console.log('Starting policy upload for file:', uploadedFile);
-    console.log('File size before upload:', uploadedFile.size);
-    console.log('File type before upload:', uploadedFile.type);
-    
     setIsUploading(true);
     try {
       const response = await policyAPI.uploadCSV(uploadedFile);
-      console.log('Policy upload response:', response);
       
       setNotification({
         open: true,

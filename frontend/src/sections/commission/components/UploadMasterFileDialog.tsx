@@ -41,24 +41,7 @@ export default function UploadMasterFileDialog({
     severity: 'info',
   });
 
-  // Function to detect file type based on content
-  const detectFileType = async (file: File): Promise<'master' | 'policy'> => 
-    new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const content = e.target?.result as string;
-        
-        // Check if it's a policy file by looking for policy-specific columns
-        if (content.includes('Policy No') || content.includes('Customer Name') || 
-            content.includes('applicationNo') || content.includes('policyNo')) {
-          resolve('policy');
-        } else {
-          // Default to master if it has master-specific columns
-          resolve('master');
-        }
-      };
-      reader.readAsText(file);
-    });
+  // Function to detect file type based on conten
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -78,8 +61,6 @@ export default function UploadMasterFileDialog({
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
       // Detect file type
-      const fileType = await detectFileType(file);
-      setDetectedFileType(fileType);
       setUploadedFile(file);
     }
   }, []);
@@ -88,14 +69,12 @@ export default function UploadMasterFileDialog({
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       // Detect file type
-      const fileType = await detectFileType(file);
-      setDetectedFileType(fileType);
       setUploadedFile(file);
     }
   }, []);
 
   const handleUpload = async () => {
-    if (uploadedFile && detectedFileType) {
+    if (uploadedFile) {
       setIsUploading(true);
       try {
         let response;
@@ -118,7 +97,7 @@ export default function UploadMasterFileDialog({
         });
 
         if (onFileUploaded) {
-          onFileUploaded(uploadedFile.name, detectedFileType);
+          onFileUploaded(uploadedFile.name,"master");
         }
 
         // Close dialog after successful upload

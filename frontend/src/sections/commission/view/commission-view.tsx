@@ -23,6 +23,7 @@ import UploadVendorFileDialog from '../components/UploadVendorFileDialog';
 import CommissionTable from '../components/CommissionTable';
 import ReconciliationSummary from '../components/ReconciliationSummary';
 import MasterDataTable from '../components/MasterDataTable';
+import UploadPolicyFileDialog from '../components/UploadPolicyFileDialog';
 
 
 interface ReconciliationRecord {
@@ -48,6 +49,7 @@ export default function CommissionView() {
   
   // Upload dialogs
   const [masterFileDialogOpen, setMasterFileDialogOpen] = useState(false);
+  const [policyFileDialogOpen, setPolicyFileDialogOpen] = useState(false);
   const [vendorFileDialogOpen, setVendorFileDialogOpen] = useState(false);
   
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -69,15 +71,17 @@ export default function CommissionView() {
     setSuccessMessage(`${source} file "${fileName}" uploaded successfully!`);
     setShowSuccessMessage(true);
     setIsUploading(false);
-    
-    // Trigger refresh of appropriate data table
-    if (fileType === 'policy') {
-      // Refresh policy data table
-      setMasterDataRefreshTrigger(prev => prev + 1);
-    } else {
       // Refresh master data table
       setMasterDataRefreshTrigger(prev => prev + 1);
-    }
+  };
+
+  const handlePolicyFileUploaded = (fileName: string) => {
+    setSuccessMessage(`Policy file "${fileName}" uploaded successfully!`);
+    setShowSuccessMessage(true);
+    setIsUploading(false);
+    
+    // Refresh policy data table
+    setMasterDataRefreshTrigger(prev => prev + 1);
   };
 
 
@@ -164,7 +168,17 @@ export default function CommissionView() {
             disabled={isUploading}
             sx={{ px: 3, py: 1.5 }}
           >
-            {isUploading ? 'Uploading...' : 'Upload File (Master/Policy)'}
+            {isUploading ? 'Uploading...' : 'Upload File (Master)'}
+          </Button>
+          
+          <Button
+            variant="contained"
+            startIcon={<CloudUpload />}
+            onClick={() => setPolicyFileDialogOpen(true)}
+            disabled={isUploading}
+            sx={{ px: 3, py: 1.5 }}
+          >
+            {isUploading ? 'Uploading...' : 'Upload File (Policy)'}
           </Button>
           
           <Button
@@ -334,6 +348,12 @@ export default function CommissionView() {
         open={masterFileDialogOpen}
         onOpenChange={setMasterFileDialogOpen}
         onFileUploaded={handleMasterFileUploaded}
+      />
+      
+      <UploadPolicyFileDialog
+        open={policyFileDialogOpen}
+        onOpenChange={setPolicyFileDialogOpen}
+        onFileUploaded={handlePolicyFileUploaded}
       />
       
       <UploadVendorFileDialog
