@@ -112,7 +112,11 @@ export const policyAPI = {
 
   // Upload CSV file (WRITE - requires authentication)
   uploadCSV: async (file: File): Promise<UploadPolicyResponse> => {
-    const response = await ApiInstance.post('/policies/upload', file);
+    const fd = new FormData();
+    fd.append('file', file);
+    const response = await ApiInstance.post('/policies/upload', fd, {
+      withCredentials: true,
+    });
     return response.data;
   },
 
@@ -131,37 +135,28 @@ export const policyAPI = {
 
 // Special function for commission section - allows policy upload without authentication
 export const commissionPolicyAPI = {
-  // Get all policies with pagination (READ - no auth required)
-  getPolicies: async (companyId: string): Promise<PoliciesResponse> => {
-    const response = await ApiInstance.get(`/analytics/company/${companyId}/policies`);
+  // Get company policies with pagination (supports infinite scroll)
+  getPolicies: async (companyId: string, page: number = 1, limit: number = 50): Promise<PoliciesResponse> => {
+    const response = await ApiInstance.get(`/analytics/company/${companyId}/policies`, {
+      params: { page, limit },
+      withCredentials: true,
+    });
     return response.data;
   },
 
-  // Get single policy by ID (READ - no auth required)
   getPolicy: async (id: string): Promise<PolicyResponse> => {
-    const response = await ApiInstance.get(`/policies/get/${id}`);
+    const response = await ApiInstance.get(`/policies/get/${id}`, { withCredentials: true });
     return response.data;
   },
 
-  // Upload CSV file for commission section (no authentication required)
+  // ✅ Upload CSV using FormData (do NOT set Content-Type)
   uploadCSV: async (file: File): Promise<UploadPolicyResponse> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    const response:any = await ApiInstance.post(`/policies/upload`,
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-    
-    if (!response) {
-      throw new Error(`Upload failed! status: ${response.status}`);
-    }
-    
+    const fd = new FormData();
+    fd.append('file', file);
+    const response = await ApiInstance.post(`/policies/upload`, fd, {
+      withCredentials: true,
+    });
     return response.data;
   },
 };
-
 export default policyAPI;
