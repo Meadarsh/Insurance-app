@@ -66,19 +66,7 @@ export default function CommissionView() {
 
   const handleMasterFileUploaded = (fileName: string, fileType: 'master' | 'policy') => {
     const source = fileType === 'policy' ? 'Policy' : 'Master';
-    const newRecord: ReconciliationRecord = {
-      id: Date.now().toString(),
-      source,
-      month: 'July 2024',
-      fileName,
-      uploadedAt: new Date().toISOString(),
-      totalProcessedRecords: Math.floor(Math.random() * 15000) + 5000,
-      totalReconValue: Math.floor(Math.random() * 50000000) + 20000000,
-      outputReconValue: Math.floor(Math.random() * 40000000) + 15000000,
-      status: 'PROCESSED',
-    };
-    
-    setSuccessMessage(`${source} file "${fileName}" uploaded successfully! Processing ${newRecord.totalProcessedRecords.toLocaleString()} records.`);
+    setSuccessMessage(`${source} file "${fileName}" uploaded successfully!`);
     setShowSuccessMessage(true);
     setIsUploading(false);
     

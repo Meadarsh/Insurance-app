@@ -77,10 +77,6 @@ export default function UploadMasterFileDialog({
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
-      console.log('File dropped:', file);
-      console.log('File size:', file.size);
-      console.log('File type:', file.type);
-      
       // Detect file type
       const fileType = await detectFileType(file);
       setDetectedFileType(fileType);
@@ -91,10 +87,6 @@ export default function UploadMasterFileDialog({
   const handleFileInput = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      console.log('File selected:', file);
-      console.log('File size:', file.size);
-      console.log('File type:', file.type);
-      
       // Detect file type
       const fileType = await detectFileType(file);
       setDetectedFileType(fileType);
@@ -104,10 +96,6 @@ export default function UploadMasterFileDialog({
 
   const handleUpload = async () => {
     if (uploadedFile && detectedFileType) {
-      console.log('Starting upload for file:', uploadedFile);
-      console.log('File type detected:', detectedFileType);
-      console.log('File size before upload:', uploadedFile.size);
-      
       setIsUploading(true);
       try {
         let response;
@@ -122,8 +110,6 @@ export default function UploadMasterFileDialog({
           response = await masterAPI.uploadCSV(uploadedFile);
           message = `Successfully uploaded ${response.count} master records!`;
         }
-        
-        console.log('Upload response:', response);
         
         setNotification({
           open: true,
@@ -142,11 +128,11 @@ export default function UploadMasterFileDialog({
           setDetectedFileType(null);
           setIsUploading(false);
         }, 2000);
-      } catch (error) {
-        console.error('Upload failed:', error);
+      } catch (error:any) {
+console.log(error);
         setNotification({
           open: true,
-          message: error instanceof Error ? error.message : 'Upload failed. Please try again.',
+          message: error ? error.response.data.message : 'Upload failed. Please try again.',
           severity: 'error',
         });
         setIsUploading(false);

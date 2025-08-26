@@ -132,8 +132,8 @@ export const policyAPI = {
 // Special function for commission section - allows policy upload without authentication
 export const commissionPolicyAPI = {
   // Get all policies with pagination (READ - no auth required)
-  getPolicies: async (page: number = 1, limit: number = 10): Promise<PoliciesResponse> => {
-    const response = await ApiInstance.get(`/policies/get?page=${page}&limit=${limit}`);
+  getPolicies: async (companyId: string): Promise<PoliciesResponse> => {
+    const response = await ApiInstance.get(`/analytics/company/${companyId}/policies`);
     return response.data;
   },
 

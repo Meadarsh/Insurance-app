@@ -8,21 +8,22 @@ import Button from '@mui/material/Button';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { DashboardContent } from 'src/layouts/dashboard';
-import { analyticsAPI, type AnalyticsData } from 'src/services/analytics';
+import { analyticsAPI } from 'src/services/analytics';
 import { AnalyticsWidgetSummary } from '../analytics-widget-summary';
-import { WorkspacesPopover } from 'src/layouts/components/workspaces-popover';
 import { MenuItem, Select } from '@mui/material';
+import { CompanyApi } from 'src/services/company';
 
 // ----------------------------------------------------------------------
 
 export function OverviewAnalyticsView() {
-  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+  const [analyticsData, setAnalyticsData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [company, setCompany] = useState('');
 
   const fetchAnalyticsData = useCallback(async (isRefresh = false) => {
     // Don't fetch if navigating
@@ -37,7 +38,7 @@ export function OverviewAnalyticsView() {
       setError(null);
       setSuccess(null);
       
-      const data = await analyticsAPI.getDashboardAnalytics();
+      const data = await analyticsAPI.getDashboardAnalytics(company);
       
       setAnalyticsData(data);
       setRetryCount(0); // Reset retry count on success
@@ -55,7 +56,7 @@ export function OverviewAnalyticsView() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [isNavigating]);
+  }, [isNavigating,company]);
 
   const handleRefresh = useCallback(async () => {
     if (refreshing) return; // Prevent multiple simultaneous refreshes
@@ -86,7 +87,7 @@ export function OverviewAnalyticsView() {
         try {
           const realTimeData = await analyticsAPI.getRealTimeData();
           if (realTimeData.stats && analyticsData) {
-            setAnalyticsData(prev => prev ? { 
+            setAnalyticsData((prev:any) => prev ? { 
               ...prev, 
               stats: { ...prev.stats, ...realTimeData.stats } 
             } : null);
@@ -101,7 +102,13 @@ export function OverviewAnalyticsView() {
     return () => clearInterval(interval);
   }, [fetchAnalyticsData]); // Removed analyticsData and loading/refreshing from dependencies
 
-  const [company, setCompany] = useState('');
+  const [companies, setCompanies] = useState([]);
+  useEffect(() => {
+    CompanyApi.getCompanies().then((res) => {
+      setCompanies(res.data);
+      setCompany(res.data[0]._id);
+    });
+  }, []);
 
   const handleChangeCompany = (companyData: string) => {
     setCompany(companyData);
@@ -121,32 +128,6 @@ export function OverviewAnalyticsView() {
     );
   }
 
-  // Show error with retry option, but still display dashboard with fallback data
-  if (error && !analyticsData) {
-    return (
-      <DashboardContent maxWidth="xl">
-        <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" minHeight="400px">
-          <Alert severity="warning" sx={{ mb: 2, maxWidth: 500 }}>
-            {error}
-          </Alert>
-          <Button 
-            variant="contained" 
-            startIcon={<RefreshIcon />}
-            onClick={handleRetry}
-            disabled={retryCount >= 3}
-          >
-            {retryCount >= 3 ? 'Max retries reached' : 'Retry'}
-          </Button>
-        </Box>
-      </DashboardContent>
-    );
-  }
-
-  // Always show dashboard, even if there's an error (will use fallback data)
-  const { stats, currentVisits, websiteVisits } = analyticsData || {};
-
-
-
   return (
     <DashboardContent maxWidth="xl">
       {/* Header with status indicator */}
@@ -161,9 +142,11 @@ export function OverviewAnalyticsView() {
           sx={{mt:2,width: '200px' }}
           onChange={(e) => handleChangeCompany(e.target.value)}>
             <MenuItem value="">Select Company</MenuItem>
-            <MenuItem value="company1">Company 1</MenuItem>
-            <MenuItem value="company2">Company 2</MenuItem>
-            <MenuItem value="company3">Company 3</MenuItem>
+           {companies&&companies?.map((companyy: any) => (
+            <MenuItem key={companyy._id} value={companyy._id}>
+              {companyy.name}
+            </MenuItem>
+          ))}
         </Select>
         </Box>
         <Box display="flex" gap={2} alignItems="center">
@@ -181,51 +164,56 @@ export function OverviewAnalyticsView() {
       </Box>
 
       {/* Analytics Widgets Grid */}
-      <Grid container spacing={3}>
+     {(company&&analyticsData) && <Grid container spacing={3}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <AnalyticsWidgetSummary
             title="Premium "
-            percent={stats?.weeklySales?.percent || 0}
-            total={stats?.weeklySales?.total || 0}
+            total={analyticsData.totals?.premium || 0}
             icon={<img alt="Weekly sales" src="/assets/icons/glass/ic-glass-bag.svg" />}
-            chart={stats?.weeklySales?.chart || { categories: [], series: [] }}
+            chart={analyticsData.stats?.weeklySales?.chart || { categories: [], series: [] }}
           />
         </Grid>
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <AnalyticsWidgetSummary
-            title="New users"
-            percent={stats?.newUsers?.percent || 0}
-            total={stats?.newUsers?.total || 0}
+            title="Commission"
+            total={analyticsData.totals?.commission|| 0}
             color="secondary"
             icon={<img alt="New users" src="/assets/icons/glass/ic-glass-users.svg" />}
-            chart={stats?.newUsers?.chart || { categories: [], series: [] }}
+            chart={analyticsData.stats?.newUsers?.chart || { categories: [], series: [] }}
           />
         </Grid>
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <AnalyticsWidgetSummary
             title="Reward"
-            percent={stats?.purchaseOrders?.percent || 0}
-            total={stats?.purchaseOrders?.total || 0}
+            total={analyticsData.totals?.reward || 0}
             color="warning"
             icon={<img alt="Purchase orders" src="/assets/icons/glass/ic-glass-buy.svg" />}
-            chart={stats?.purchaseOrders?.chart || { categories: [], series: [] }}
+            chart={analyticsData.stats?.purchaseOrders?.chart || { categories: [], series: [] }}
           />
         </Grid>
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <AnalyticsWidgetSummary
             title="Additional Reward"
-            percent={stats?.messages?.percent || 0}
-            total={stats?.messages?.total || 0}
+            total={analyticsData.totals?.policies || 0}
             color="error"
             icon={<img alt="Messages" src="/assets/icons/glass/ic-glass-message.svg" />}
-            chart={stats?.messages?.chart || { categories: [], series: [] }}
+            chart={analyticsData.stats?.messages?.chart || { categories: [], series: [] }}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <AnalyticsWidgetSummary
+            title="Profit"
+            total={analyticsData.totals?.profit || 0}
+            color="error"
+            icon={<img alt="Messages" src="/assets/icons/glass/ic-glass-message.svg" />}
+            chart={analyticsData.stats?.messages?.chart || { categories: [], series: [] }}
           />
         </Grid>
 
-      </Grid>
+      </Grid>}
 
       {/* Enhanced Footer with Refresh Button */}
       <Box display="flex" justifyContent="center" mt={4} mb={2}>

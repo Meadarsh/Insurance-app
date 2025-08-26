@@ -108,7 +108,6 @@ export const uploadPolicies = async (req, res) => {
     });
 
     const errors = [];
-    const enriched = [];
 
     // Match against master + compute amounts
     for (const policy of rows) {

@@ -22,6 +22,8 @@ import {
   Chip,
   Tooltip,
   CircularProgress,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -31,14 +33,14 @@ import {
 } from '@mui/icons-material';
 import { commissionPolicyAPI, policyAPI, PolicyData } from '../../../services/policy';
 import { masterAPI, MasterData } from '../../../services/master';
+import { CompanyApi } from 'src/services/company';
 
 interface PolicyDataTableProps {
   refreshTrigger?: number;
 }
 
 export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableProps) {
-  const [policies, setPolicies] = useState<PolicyData[]>([]);
-  const [masters, setMasters] = useState<MasterData[]>([]);
+  const [policies, setPolicies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -47,24 +49,35 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [selectedPolicy, setSelectedPolicy] = useState<PolicyData | null>(null);
   const [editingPolicy, setEditingPolicy] = useState<Partial<PolicyData>>({});
+  const [company, setCompany] = useState('');
   const [notification, setNotification] = useState({
     open: false,
     message: '',
     severity: 'success' as 'success' | 'error' | 'warning' | 'info'
   });
 
+   const [companies, setCompanies] = useState([]);
+    useEffect(() => {
+      CompanyApi.getCompanies().then((res) => {
+        setCompanies(res.data);
+        setCompany(res.data[0]._id);
+      });
+    }, []);
+  
+    const handleChangeCompany = (companyData: string) => {
+      setCompany(companyData);
+    };
+
   // Fetch policies and masters
   const fetchData = async () => {
     try {
+      if(!company){
+        return;
+      }
       setLoading(true);
-      const [policiesResponse, mastersResponse] = await Promise.all([
-        commissionPolicyAPI.getPolicies(page + 1, rowsPerPage),
-        masterAPI.getMasters()
-      ]);
-      
+      const policiesResponse = await commissionPolicyAPI.getPolicies(company);
       setPolicies(policiesResponse.data);
       setTotalCount(policiesResponse.pagination.total);
-      setMasters(mastersResponse.data);
     } catch (error) {
       console.error('Error fetching data:', error);
       setNotification({
@@ -79,11 +92,11 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
 
   useEffect(() => {
     fetchData();
-  }, [page, rowsPerPage, refreshTrigger]);
+  }, [page, rowsPerPage, refreshTrigger, company]);
 
   // Get master product name by ID
   const getMasterProductName = (masterRef: string) => {
-    const master = masters.find(m => m._id === masterRef);
+    const master = policies.find(m => m._id === masterRef);
     return master?.productName || 'Unknown Product';
   };
 
@@ -195,12 +208,26 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
       </Box>
     );
   }
-
+console.log("policies",policies);
   return (
     <Box>
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <div className='flex gap-2 items-center'>
         <Typography variant="h6">Policy Data Management</Typography>
+        <Select
+          label="Select Company"
+          value={company}
+          sx={{width: '200px',height: '40px' }}
+          onChange={(e) => handleChangeCompany(e.target.value)}>
+            <MenuItem value="">Select Company</MenuItem>
+           {companies&&companies?.map((companyy: any) => (
+            <MenuItem key={companyy._id} value={companyy._id}>
+              {companyy.name}
+            </MenuItem>
+          ))}
+        </Select>
+        </div>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
@@ -216,23 +243,37 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Policy No</TableCell>
-                <TableCell>Customer Name</TableCell>
-                <TableCell>Product Name</TableCell>
-                <TableCell>Premium</TableCell>
-                <TableCell>Reward</TableCell>
-                <TableCell>Master Product</TableCell>
-                <TableCell>Actions</TableCell>
+                <TableCell sx={{width: '100px'}}>Policy No</TableCell>
+                <TableCell sx={{width: '100px'}}>Product Name</TableCell>
+                <TableCell sx={{width: '100px'}}>Variant</TableCell>
+                <TableCell sx={{width: '100px'}}>Term (Yrs)</TableCell>
+                <TableCell sx={{width: '100px'}}>PPT (Yrs)</TableCell>
+                <TableCell sx={{width: '100px'}}>Net Premium (₹)</TableCell>
+                <TableCell sx={{width: '100px'}}>Reward (₹)</TableCell>
+                <TableCell sx={{width: '100px'}}>Reward %</TableCell>
+                <TableCell sx={{width: '100px'}}>Commission (₹)</TableCell>
+                <TableCell sx={{width: '100px'}}>Commission %</TableCell>
+                <TableCell sx={{width: '100px'}}>Total Profit (₹)</TableCell>
+                <TableCell sx={{width: '100px'}}>Total Rate %</TableCell>
+                <TableCell sx={{width: '100px'}}>Master Product</TableCell>
+                <TableCell sx={{width: '100px'}}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {policies.map((policy) => (
                 <TableRow key={policy._id}>
-                  <TableCell>{policy.policyNo}</TableCell>
-                  <TableCell>{policy.customerName || 'N/A'}</TableCell>
-                  <TableCell>{policy.productName || 'N/A'}</TableCell>
-                  <TableCell>₹{policy.PREMIUM?.toLocaleString() || '0'}</TableCell>
-                  <TableCell>₹{policy.reward?.toLocaleString() || '0'}</TableCell>
+                  <TableCell sx={{width: '100px'}}>{policy.policyNumber}</TableCell>
+                  <TableCell sx={{width: '100px'}}>{policy.policyName || 'N/A'}</TableCell>
+                  <TableCell sx={{width: '100px'}}>{policy.variant || 'N/A'}</TableCell>
+                  <TableCell sx={{width: '100px'}}>{policy.policyTerm || 'N/A'}</TableCell>
+                  <TableCell sx={{width: '100px'}}>{policy.ppt || 'N/A'}</TableCell>
+                  <TableCell sx={{width: '100px'}}>₹{policy.netPrice?.toLocaleString() || '0'}</TableCell>
+                  <TableCell sx={{width: '100px'}}>₹{policy.rewardAmount?.toLocaleString() || '0'}</TableCell>
+                  <TableCell sx={{width: '100px'}}>{policy.rewardPct || '0'}%</TableCell>
+                  <TableCell sx={{width: '100px'}}>₹{policy.commissionAmount?.toLocaleString() || '0'}</TableCell>
+                  <TableCell sx={{width: '100px'}}>{policy.commissionPct || '0'}%</TableCell>
+                  <TableCell sx={{width: '100px'}}>₹{policy.totalProfitAmount?.toLocaleString() || '0'}</TableCell>
+                  <TableCell sx={{width: '100px'}}>{policy.totalRatePct || '0'}%</TableCell>
                   <TableCell>
                     {policy.masterRef ? (
                       <Chip 
