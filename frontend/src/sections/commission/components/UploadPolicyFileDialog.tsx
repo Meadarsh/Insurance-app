@@ -117,7 +117,7 @@ export default function UploadPolicyFileDialog({
         onOpenChange(false);
         setUploadedFile(null);
         setIsUploading(false);
-      }, 2000);
+      }, 500);
     } catch (error) {
       console.error('Policy upload failed:', error);
       setNotification({

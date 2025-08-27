@@ -8,6 +8,6 @@ import {
 const router = express.Router();
 
 router.get("/get", protect, getCompanies);
-router.delete("/delete/:id", protect, deleteCompany);
+router.delete("/delete/:companyId", protect, deleteCompany);
 
 export default router;

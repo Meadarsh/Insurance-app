@@ -25,6 +25,7 @@ import {
   Select,
   MenuItem,
   Autocomplete,
+  DialogContentText,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -61,6 +62,9 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
     message: '',
     severity: 'success' as 'success' | 'error' | 'warning' | 'info'
   });
+  
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedCompanyForDelete, setSelectedCompanyForDelete] = useState<Company | null>(null);
 
    const [companies, setCompanies] = useState<Company[]>([]);
     useEffect(() => {
@@ -72,6 +76,44 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
   
     const handleChangeCompany = (companyData: string) => {
       setCompany(companyData);
+    };
+
+    const handleDeleteCompany = async () => {
+      if (!selectedCompanyForDelete) return;
+      
+      try {
+        setLoading(true);
+        await CompanyApi.deleteCompany(selectedCompanyForDelete._id);
+        
+        // Update the companies list
+        const updatedCompanies = companies.filter(c => c._id !== selectedCompanyForDelete._id);
+        setCompanies(updatedCompanies);
+        
+        // Reset selection if the deleted company was selected
+        if (company === selectedCompanyForDelete._id) {
+          setCompany('');
+          setPolicies([]);
+          setTotalCount(0);
+        }
+        
+        setNotification({
+          open: true,
+          message: `${selectedCompanyForDelete.name} has been deleted successfully`,
+          severity: 'success'
+        });
+        
+      } catch (error) {
+        console.error('Error deleting company:', error);
+        setNotification({
+          open: true,
+          message: 'Failed to delete company. Please try again.',
+          severity: 'error'
+        });
+      } finally {
+        setLoading(false);
+        setDeleteDialogOpen(false);
+        setSelectedCompanyForDelete(null);
+      }
     };
 
   // Fetch policies and masters
@@ -216,6 +258,40 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
   }
   return (
     <Box>
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">
+          Delete Company
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            Are you sure you want to delete "{selectedCompanyForDelete?.name}"? This action cannot be undone.
+            <br /><br />
+            <strong>Warning:</strong> This will also delete all associated data including policies and master records.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => setDeleteDialogOpen(false)}
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleDeleteCompany} 
+            color="error" 
+            disabled={loading}
+            startIcon={loading ? <CircularProgress size={20} /> : null}
+          >
+            {loading ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <div className='flex gap-2 items-center'>
@@ -223,10 +299,28 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
         <Autocomplete
           disablePortal
           options={companies}
-          getOptionLabel={(option) => option.name || ''}
+          getOptionLabel={(option: Company) => option.name || ''}
           value={companies.find(c => c._id === company) || null}
           onChange={(_, newValue) => newValue && handleChangeCompany(newValue._id)}
-          sx={{ width: 250, '& .MuiInputBase-root': { height: '40px' } }}
+          sx={{ width: 300, '& .MuiInputBase-root': { height: '40px' } }}
+          renderOption={(props, option) => (
+            <li {...props} style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+              <span>{option.name}</span>
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedCompanyForDelete(option);
+                  setDeleteDialogOpen(true);
+                }}
+                color="error"
+                sx={{ '&:hover': { backgroundColor: 'rgba(244, 67, 54, 0.08)' } }}
+                title="Delete Company"
+              >
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </li>
+          )}
           renderInput={(params) => (
             <TextField 
               {...params} 

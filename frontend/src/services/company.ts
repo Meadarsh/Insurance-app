@@ -6,4 +6,8 @@ export const CompanyApi = {
         return response.data;
     },
     
+    deleteCompany: async (companyId: string): Promise<any> => {
+        const response = await ApiInstance.delete(`/companies/delete/${companyId}`);
+        return response.data;
+    }
 };

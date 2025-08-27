@@ -106,7 +106,7 @@ export default function UploadMasterFileDialog({
           setUploadedFile(null);
           setDetectedFileType(null);
           setIsUploading(false);
-        }, 2000);
+        }, 500);
       } catch (error:any) {
         setNotification({
           open: true,

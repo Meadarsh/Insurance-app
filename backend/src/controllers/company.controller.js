@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Company from "../models/company.model.js";
 import Master from "../models/master.model.js";
 import Policy from "../models/policy.model.js";

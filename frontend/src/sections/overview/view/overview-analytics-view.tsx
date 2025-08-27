@@ -10,8 +10,12 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { analyticsAPI } from 'src/services/analytics';
 import { AnalyticsWidgetSummary } from '../analytics-widget-summary';
-import { Autocomplete, MenuItem, Select, TextField } from '@mui/material';
+import { Autocomplete, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, Snackbar, TextField } from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { CompanyApi } from 'src/services/company';
+import UploadPolicyFileDialog from 'src/sections/commission/components/UploadPolicyFileDialog';
+import { CloudUpload } from '@mui/icons-material';
+import UploadMasterFileDialog from 'src/sections/commission/components/UploadMasterFileDialog';
 
 // ----------------------------------------------------------------------
 
@@ -24,6 +28,14 @@ export function OverviewAnalyticsView() {
   const [retryCount, setRetryCount] = useState(0);
   const [isNavigating, setIsNavigating] = useState(false);
   const [company, setCompany] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [selectedCompany, setSelectedCompany] = useState<any>(null);
+  const [policyFileDialogOpen, setPolicyFileDialogOpen] = useState(false);
+  const [masterFileDialogOpen, setMasterFileDialogOpen] = useState(false);
+
 
   const fetchAnalyticsData = useCallback(async (isRefresh = false) => {
     // Don't fetch if navigating
@@ -110,9 +122,62 @@ export function OverviewAnalyticsView() {
     });
   }, []);
 
-  const handleChangeCompany = (companyData: string) => {
-    setCompany(companyData);
+  const handleChangeCompany = (companyId: string) => {
+    setCompany(companyId);
+    // Refresh data when company changes
+    fetchAnalyticsData();
   };
+
+  const handleDeleteCompany = async () => {
+    if (!selectedCompany) return;
+    
+    try {
+      setLoading(true);
+      await CompanyApi.deleteCompany(selectedCompany._id);
+      
+      // Update the companies list
+      const updatedCompanies = companies.filter((c:any) => c._id !== selectedCompany._id);
+      setCompanies(updatedCompanies);
+      
+      // Reset selection if the deleted company was selected
+      if (company === selectedCompany._id) {
+        setCompany('');
+        setSelectedCompany(null);
+        setAnalyticsData(null);
+      }
+      
+      setSuccess(`${selectedCompany.name} has been deleted successfully`);
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(null), 3000);
+      
+    } catch (error) {
+      console.error('Error deleting company:', error);
+      setError('Failed to delete company. Please try again.');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setLoading(false);
+      setDeleteDialogOpen(false);
+    }
+  };
+
+  const handlePolicyFileUploaded = (fileName: string) => {
+    setSuccessMessage(`Policy file "${fileName}" uploaded successfully!`);
+    setShowSuccessMessage(true);
+    setIsUploading(false);
+    fetchAnalyticsData()
+  }
+
+  const handleMasterFileUploaded = (fileName: string, fileType: 'master' | 'policy') => {
+    setSuccessMessage(`Master file "${fileName}" uploaded successfully!`);
+    setShowSuccessMessage(true);
+    setIsUploading(false);
+    CompanyApi.getCompanies().then((res) => {
+      setCompanies(res.data);
+      setCompany(res.data[0]._id);
+    });
+  };
+
 
   // Show loading only on initial load
   if (loading && !analyticsData) {
@@ -129,7 +194,57 @@ export function OverviewAnalyticsView() {
   }
 
   return (
-    <DashboardContent maxWidth="xl">
+    <>
+     <Snackbar
+              open={showSuccessMessage}
+              autoHideDuration={6000}
+              onClose={() => setShowSuccessMessage(false)}
+              anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+              <Alert 
+                onClose={() => setShowSuccessMessage(false)} 
+                severity="success" 
+                sx={{ width: '100%' }}
+              >
+                {successMessage}
+              </Alert>
+            </Snackbar>
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">
+          Delete Company
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            Are you sure you want to delete "{selectedCompany?.name}"? This action cannot be undone.
+            <br /><br />
+            <strong>Warning:</strong> This will also delete all associated data including policies and master records.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => setDeleteDialogOpen(false)}
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleDeleteCompany} 
+            color="error" 
+            disabled={loading}
+            startIcon={loading ? <CircularProgress size={20} /> : null}
+          >
+            {loading ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <DashboardContent maxWidth="xl">
       {/* Header with status indicator */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={{ xs: 3, md: 5 }}>
         <Box>
@@ -139,14 +254,37 @@ export function OverviewAnalyticsView() {
          <Autocomplete
                 disablePortal
                 options={companies}
-                getOptionLabel={(option:any) => option.name || ''}
-                value={companies.find((c:any) => c._id === company) || null}
-                onChange={(_, newValue) => newValue && handleChangeCompany(newValue._id)}
-                sx={{ width: 250,mt:1, '& .MuiInputBase-root': { height: '40px' } }}
+                getOptionLabel={(option: any) => option.name || ''}
+                value={companies.find((c: any) => c._id === company) || null}
+                onChange={(_, newValue) => {
+                  setSelectedCompany(newValue);
+                  if (newValue) {
+                    handleChangeCompany(newValue._id);
+                  }
+                }}
+                sx={{ width: 300, mt: 1, '& .MuiInputBase-root': { height: '40px' } }}
+                renderOption={(props, option) => (
+                  <li {...props} style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                    <span>{option.name}</span>
+                    <IconButton
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedCompany(option);
+                        setDeleteDialogOpen(true);
+                      }}
+                      color="error"
+                      sx={{ '&:hover': { backgroundColor: 'rgba(244, 67, 54, 0.08)' } }}
+                      title="Delete Company"
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </li>
+                )}
                 renderInput={(params) => (
-                  <TextField 
-                    {...params} 
-                    label="Select Company" 
+                  <TextField
+                    {...params}
+                    label="Select Company"
                     size="small"
                     variant="outlined"
                   />
@@ -170,57 +308,57 @@ export function OverviewAnalyticsView() {
       {/* Analytics Widgets Grid */}
      {(company&&analyticsData) && <Grid container spacing={3}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <AnalyticsWidgetSummary
+         {analyticsData.totals?.premium>0 && <AnalyticsWidgetSummary
             title="Premium "
             total={analyticsData.totals?.premium || 0}
             icon={<img alt="Weekly sales" src="/assets/icons/glass/ic-glass-bag.svg" />}
             chart={analyticsData.stats?.weeklySales?.chart || { categories: [], series: [] }}
-          />
+          />}
         </Grid>
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <AnalyticsWidgetSummary
+         {analyticsData.totals?.commission>0 && <AnalyticsWidgetSummary
             title="Commission"
             total={analyticsData.totals?.commission|| 0}
             color="secondary"
             icon={<img alt="New users" src="/assets/icons/glass/ic-glass-users.svg" />}
             chart={analyticsData.stats?.newUsers?.chart || { categories: [], series: [] }}
-          />
+          />}
         </Grid>
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <AnalyticsWidgetSummary
+         {analyticsData.totals?.reward>0 && <AnalyticsWidgetSummary
             title="Reward"
             total={analyticsData.totals?.reward || 0}
             color="warning"
             icon={<img alt="Purchase orders" src="/assets/icons/glass/ic-glass-buy.svg" />}
             chart={analyticsData.stats?.purchaseOrders?.chart || { categories: [], series: [] }}
-          />
+          />}
         </Grid>
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <AnalyticsWidgetSummary
+         {analyticsData.totals?.policies>0 && <AnalyticsWidgetSummary
             title="Additional Reward"
             total={analyticsData.totals?.policies || 0}
             color="error"
             icon={<img alt="Messages" src="/assets/icons/glass/ic-glass-message.svg" />}
             chart={analyticsData.stats?.messages?.chart || { categories: [], series: [] }}
-          />
+          />}
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <AnalyticsWidgetSummary
+         {analyticsData.totals?.profit>0 && <AnalyticsWidgetSummary
             title="Profit"
             total={analyticsData.totals?.profit || 0}
             color="error"
             icon={<img alt="Messages" src="/assets/icons/glass/ic-glass-message.svg" />}
             chart={analyticsData.stats?.messages?.chart || { categories: [], series: [] }}
-          />
+          />}
         </Grid>
 
       </Grid>}
 
       {/* Enhanced Footer with Refresh Button */}
-      <Box display="flex" justifyContent="center" mt={4} mb={2}>
+      {(analyticsData?.totals?.premium>0||analyticsData?.totals?.commission>0||analyticsData?.totals?.reward>0||analyticsData?.totals?.policies>0||analyticsData?.totals?.profit>0) && <Box display="flex" justifyContent="center" mt={4} mb={2}>
         <Button 
           variant="contained"
           startIcon={refreshing ? <CircularProgress size={16} /> : <RefreshIcon />}
@@ -244,7 +382,30 @@ export function OverviewAnalyticsView() {
         >
           {refreshing ? 'Refreshing...' : 'Refresh Data'}
         </Button>
-      </Box>
+      </Box>}
+      {(analyticsData?.totals?.premium===0&&analyticsData?.totals?.commission===0&&analyticsData?.totals?.reward===0&&analyticsData?.totals?.policies===0&&analyticsData?.totals?.profit===0) &&<>
+      
+      {company? <Button
+            variant="contained"
+            size="small"
+            startIcon={<CloudUpload />}
+            onClick={() => setPolicyFileDialogOpen(true)}
+            disabled={isUploading}
+            sx={{width: 200,mx:"auto"}}
+          >
+            {isUploading ? 'Uploading...' : 'Upload File (Policy)'}
+          </Button>:
+           <Button
+           variant="contained"
+           startIcon={<CloudUpload />}
+           onClick={() => setMasterFileDialogOpen(true)}
+           disabled={isUploading}
+           size="small"
+           sx={{width: 200,mx:"auto"}}
+         >
+           {isUploading ? 'Uploading...' : 'Upload File (Master)'}
+         </Button>}
+          </>}
 
       {/* Status Information */}
       <Box display="flex" justifyContent="center" mb={2}>
@@ -260,5 +421,17 @@ export function OverviewAnalyticsView() {
         </Typography>
       </Box>
     </DashboardContent>
+       <UploadPolicyFileDialog
+            open={policyFileDialogOpen}
+            onOpenChange={setPolicyFileDialogOpen}
+            onFileUploaded={handlePolicyFileUploaded}
+          />
+           <UploadMasterFileDialog
+                  open={masterFileDialogOpen}
+                  onOpenChange={setMasterFileDialogOpen}
+                  onFileUploaded={handleMasterFileUploaded}
+                />
+
+    </>
   );
 }
