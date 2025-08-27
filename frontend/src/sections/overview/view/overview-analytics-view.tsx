@@ -10,7 +10,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { analyticsAPI } from 'src/services/analytics';
 import { AnalyticsWidgetSummary } from '../analytics-widget-summary';
-import { MenuItem, Select } from '@mui/material';
+import { Autocomplete, MenuItem, Select, TextField } from '@mui/material';
 import { CompanyApi } from 'src/services/company';
 
 // ----------------------------------------------------------------------
@@ -136,18 +136,22 @@ export function OverviewAnalyticsView() {
         <Typography variant="h4">
           Hi, Welcome back 👋
         </Typography>
-        <Select
-          label="Select Company"
-          value={company}
-          sx={{mt:2,width: '200px' }}
-          onChange={(e) => handleChangeCompany(e.target.value)}>
-            <MenuItem value="">Select Company</MenuItem>
-           {companies&&companies?.map((companyy: any) => (
-            <MenuItem key={companyy._id} value={companyy._id}>
-              {companyy.name}
-            </MenuItem>
-          ))}
-        </Select>
+         <Autocomplete
+                disablePortal
+                options={companies}
+                getOptionLabel={(option:any) => option.name || ''}
+                value={companies.find((c:any) => c._id === company) || null}
+                onChange={(_, newValue) => newValue && handleChangeCompany(newValue._id)}
+                sx={{ width: 250,mt:1, '& .MuiInputBase-root': { height: '40px' } }}
+                renderInput={(params) => (
+                  <TextField 
+                    {...params} 
+                    label="Select Company" 
+                    size="small"
+                    variant="outlined"
+                  />
+                )}
+              />
         </Box>
         <Box display="flex" gap={2} alignItems="center">
           {error && (

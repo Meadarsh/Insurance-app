@@ -39,7 +39,7 @@ interface ReconciliationRecord {
 }
 
 export default function CommissionView() {
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState(1);
   const [masterDataRefreshTrigger, setMasterDataRefreshTrigger] = useState(0);
 
   const [isRefreshing, setIsRefreshing] = useState(false);

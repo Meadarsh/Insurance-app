@@ -24,6 +24,7 @@ import {
   CircularProgress,
   Select,
   MenuItem,
+  Autocomplete,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -32,8 +33,13 @@ import {
   Visibility as ViewIcon,
 } from '@mui/icons-material';
 import { commissionPolicyAPI, policyAPI, PolicyData } from '../../../services/policy';
-import { masterAPI, MasterData } from '../../../services/master';
 import { CompanyApi } from 'src/services/company';
+
+interface Company {
+  _id: string;
+  name: string;
+  // Add other company properties as needed
+}
 
 interface PolicyDataTableProps {
   refreshTrigger?: number;
@@ -56,7 +62,7 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
     severity: 'success' as 'success' | 'error' | 'warning' | 'info'
   });
 
-   const [companies, setCompanies] = useState([]);
+   const [companies, setCompanies] = useState<Company[]>([]);
     useEffect(() => {
       CompanyApi.getCompanies().then((res) => {
         setCompanies(res.data);
@@ -208,25 +214,28 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
       </Box>
     );
   }
-console.log("policies",policies);
   return (
     <Box>
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <div className='flex gap-2 items-center'>
         <Typography variant="h6">Policy Data Management</Typography>
-        <Select
-          label="Select Company"
-          value={company}
-          sx={{width: '200px',height: '40px' }}
-          onChange={(e) => handleChangeCompany(e.target.value)}>
-            <MenuItem value="">Select Company</MenuItem>
-           {companies&&companies?.map((companyy: any) => (
-            <MenuItem key={companyy._id} value={companyy._id}>
-              {companyy.name}
-            </MenuItem>
-          ))}
-        </Select>
+        <Autocomplete
+          disablePortal
+          options={companies}
+          getOptionLabel={(option) => option.name || ''}
+          value={companies.find(c => c._id === company) || null}
+          onChange={(_, newValue) => newValue && handleChangeCompany(newValue._id)}
+          sx={{ width: 250, '& .MuiInputBase-root': { height: '40px' } }}
+          renderInput={(params) => (
+            <TextField 
+              {...params} 
+              label="Select Company" 
+              size="small"
+              variant="outlined"
+            />
+          )}
+        />
         </div>
         <Button
           variant="contained"

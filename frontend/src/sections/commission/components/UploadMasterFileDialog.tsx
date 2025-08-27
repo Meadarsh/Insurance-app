@@ -108,7 +108,6 @@ export default function UploadMasterFileDialog({
           setIsUploading(false);
         }, 2000);
       } catch (error:any) {
-console.log(error);
         setNotification({
           open: true,
           message: error ? error.response.data.message : 'Upload failed. Please try again.',
