@@ -148,3 +148,4 @@ function buildSort(sortStr) {
   const field = s.replace(/^-/, "");
   return { [field]: dir };
 }
+const listMasterData = async (req, res) => {};
