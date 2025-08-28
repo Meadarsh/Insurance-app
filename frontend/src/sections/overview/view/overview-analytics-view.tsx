@@ -221,7 +221,7 @@ export function OverviewAnalyticsView() {
         </DialogTitle>
         <DialogContent>
           <DialogContentText id="alert-dialog-description">
-            Are you sure you want to delete "{selectedCompany?.name}"? This action cannot be undone.
+            Are you sure you want to delete &quot;{selectedCompany?.name}&quot;? This action cannot be undone.
             <br /><br />
             <strong>Warning:</strong> This will also delete all associated data including policies and master records.
           </DialogContentText>
@@ -383,7 +383,7 @@ export function OverviewAnalyticsView() {
           {refreshing ? 'Refreshing...' : 'Refresh Data'}
         </Button>
       </Box>}
-      {(analyticsData?.totals?.premium===0&&analyticsData?.totals?.commission===0&&analyticsData?.totals?.reward===0&&analyticsData?.totals?.policies===0&&analyticsData?.totals?.profit===0) &&<>
+      {(analyticsData?.totals?.premium===0&&analyticsData?.totals?.commission===0&&analyticsData?.totals?.reward===0&&analyticsData?.totals?.policies===0|| !analyticsData?.totals) &&<>
       
       {company? <Button
             variant="contained"
