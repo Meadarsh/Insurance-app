@@ -2,24 +2,20 @@ import ApiInstance from "./api.instance";
 
 export interface MasterData {
   _id?: string;
+  company?: string;
   productName: string;
-  premiumPayingTerm: {
-    min: number;
-    max: number | null;
-  };
+  productVariant?: string;
+  premiumPayingTermMin: number;
+  premiumPayingTermMax: number | null;
   policyTerm: number;
   policyNumber: string;
-  policyPrices: Array<{
-    price: number;
-    date: Date;
-  }>;
-  productVariant?: string;
   totalRate: number;
   commission: number;
   reward: number;
   userId?: string;
   createdAt?: string;
   updatedAt?: string;
+  __v?: number;
 }
 
 export interface UploadResponse {
@@ -28,10 +24,19 @@ export interface UploadResponse {
   data: MasterData[];
 }
 
+export interface PaginationInfo {
+  total: number;
+  totalPages: number;
+  currentPage: number;
+  limit: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
 export interface MastersResponse {
   success: boolean;
-  count: number;
   data: MasterData[];
+  pagination: PaginationInfo;
 }
 
 export interface MasterResponse {
@@ -40,9 +45,9 @@ export interface MasterResponse {
 }
 
 export const masterAPI = {
-  // Get all master records
-  getMasters: async (): Promise<MastersResponse> => {
-    const response = await ApiInstance.get('/masters/get');
+  // Get all master records with pagination
+  getMasters: async (params?: { page?: number; limit?: number }): Promise<MastersResponse> => {
+    const response = await ApiInstance.get('/masters/get', { params });
     return response.data;
   },
 

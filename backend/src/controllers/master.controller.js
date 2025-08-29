@@ -175,19 +175,37 @@ export const uploadMasterCSV = async (req, res) => {
 
 export const getCompanyMasters = async (req, res) => {
   try {
-    const company = await Company.findOne({
-      _id: req.params.companyId,
-      createdBy: req.user._id,
-    });
-    if (!company)
-      return res
-        .status(404)
-        .json({ success: false, error: "Company not found" });
+    // Pagination parameters
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const skip = (page - 1) * limit;
 
-    const masters = await Master.find({ company: company._id }).sort({
-      createdAt: -1,
+    // Get total count for pagination info
+    const total = await Master.countDocuments();
+    
+    // Get paginated results
+    const masters = await Master.find()
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(total / limit);
+    const hasNextPage = page < totalPages;
+    const hasPreviousPage = page > 1;
+
+    return res.json({
+      success: true,
+      data: masters,
+      pagination: {
+        total,
+        totalPages,
+        currentPage: page,
+        limit,
+        hasNextPage,
+        hasPreviousPage,
+      },
     });
-    return res.json({ success: true, count: masters.length, data: masters });
   } catch (error) {
     return res.status(400).json({ success: false, error: error.message });
   }

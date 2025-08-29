@@ -60,9 +60,12 @@ export default function MasterDataTable({ refreshTrigger = 0 }: MasterDataTableP
   const fetchMasters = async () => {
     setLoading(true);
     try {
-      const response = await masterAPI.getMasters();
+      const response = await masterAPI.getMasters({
+        page: page + 1, // MUI TablePagination is 0-indexed, API is 1-indexed
+        limit: rowsPerPage,
+      });
       setMasters(response.data);
-      setTotalCount(response.count);
+      setTotalCount(response.pagination?.total || 0);
     } catch (error) {
       console.error('Failed to fetch masters:', error);
       setNotification({
@@ -77,7 +80,7 @@ export default function MasterDataTable({ refreshTrigger = 0 }: MasterDataTableP
 
   useEffect(() => {
     fetchMasters();
-  }, [refreshTrigger]);
+  }, [refreshTrigger, page, rowsPerPage]);
 
   const handlePageChange = (event: unknown, newPage: number) => {
     setPage(newPage);
@@ -90,7 +93,11 @@ export default function MasterDataTable({ refreshTrigger = 0 }: MasterDataTableP
 
   const handleEdit = (master: MasterData) => {
     setSelectedMaster(master);
-    setFormData(master);
+    setFormData({
+      ...master,
+      premiumPayingTermMin: master.premiumPayingTermMin,
+      premiumPayingTermMax: master.premiumPayingTermMax,
+    });
     setEditDialogOpen(true);
   };
 
@@ -98,11 +105,11 @@ export default function MasterDataTable({ refreshTrigger = 0 }: MasterDataTableP
     setSelectedMaster(null);
     setFormData({
       productName: '',
-      premiumPayingTerm: { min: 0, max: null },
+      productVariant: '',
+      premiumPayingTermMin: 0,
+      premiumPayingTermMax: null,
       policyTerm: 0,
       policyNumber: '',
-      policyPrices: [{ price: 0, date: new Date() }],
-      productVariant: '',
       totalRate: 0,
       commission: 0,
       reward: 0,
@@ -166,11 +173,11 @@ export default function MasterDataTable({ refreshTrigger = 0 }: MasterDataTableP
     setNotification(prev => ({ ...prev, open: false }));
   };
 
-  const formatPremiumTerm = (term: { min: number; max: number | null }) => {
-    if (term.max === null) {
-      return `${term.min}+ years`;
+  const formatPremiumTerm = (min: number, max: number | null) => {
+    if (max === null) {
+      return `${min}+ years`;
     }
-    return term.min === term.max ? `${term.min} years` : `${term.min}-${term.max} years`;
+    return min === max ? `${min} years` : `${min}-${max} years`;
   };
 
   const formatPercentage = (value: number) => `${value}%`;
@@ -222,13 +229,11 @@ export default function MasterDataTable({ refreshTrigger = 0 }: MasterDataTableP
               </TableRow>
             </TableHead>
             <TableBody>
-              {masters
-                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                .map((master) => (
+              {masters.map((master) => (
                   <TableRow key={master._id}>
-                    <TableCell>{master.productName}</TableCell>
+                    <TableCell>{master.productName} {master.productVariant ? `(${master.productVariant})` : ''}</TableCell>
                     <TableCell>{master.policyNumber}</TableCell>
-                    <TableCell>{formatPremiumTerm(master.premiumPayingTerm)}</TableCell>
+                    <TableCell>{formatPremiumTerm(master.premiumPayingTermMin, master.premiumPayingTermMax)}</TableCell>
                     <TableCell>{master.policyTerm} years</TableCell>
                     <TableCell>{formatPercentage(master.totalRate)}</TableCell>
                     <TableCell>{formatPercentage(master.commission)}</TableCell>
@@ -285,26 +290,20 @@ export default function MasterDataTable({ refreshTrigger = 0 }: MasterDataTableP
             <TextField
               label="Premium Term Min (years)"
               type="number"
-              value={formData.premiumPayingTerm?.min || 0}
+              value={formData.premiumPayingTermMin || 0}
               onChange={(e) => setFormData({
                 ...formData,
-                premiumPayingTerm: {
-                  ...formData.premiumPayingTerm!,
-                  min: parseInt(e.target.value) || 0
-                }
+                premiumPayingTermMin: parseInt(e.target.value) || 0
               })}
               fullWidth
             />
             <TextField
               label="Premium Term Max (years, optional)"
               type="number"
-              value={formData.premiumPayingTerm?.max || ''}
+              value={formData.premiumPayingTermMax || ''}
               onChange={(e) => setFormData({
                 ...formData,
-                premiumPayingTerm: {
-                  ...formData.premiumPayingTerm!,
-                  max: e.target.value ? parseInt(e.target.value) : null
-                }
+                premiumPayingTermMax: e.target.value ? parseInt(e.target.value) : null
               })}
               fullWidth
             />
@@ -372,13 +371,10 @@ export default function MasterDataTable({ refreshTrigger = 0 }: MasterDataTableP
             <TextField
               label="Premium Term Min (years)"
               type="number"
-              value={formData.premiumPayingTerm?.min || 0}
+              value={formData.premiumPayingTermMin || 0}
               onChange={(e) => setFormData({
                 ...formData,
-                premiumPayingTerm: {
-                  ...formData.premiumPayingTerm!,
-                  min: parseInt(e.target.value) || 0
-                }
+                premiumPayingTermMin: parseInt(e.target.value) || 0
               })}
               fullWidth
               required
@@ -386,13 +382,10 @@ export default function MasterDataTable({ refreshTrigger = 0 }: MasterDataTableP
             <TextField
               label="Premium Term Max (years, optional)"
               type="number"
-              value={formData.premiumPayingTerm?.max || ''}
+              value={formData.premiumPayingTermMax || ''}
               onChange={(e) => setFormData({
                 ...formData,
-                premiumPayingTerm: {
-                  ...formData.premiumPayingTerm!,
-                  max: e.target.value ? parseInt(e.target.value) : null
-                }
+                premiumPayingTermMax: e.target.value ? parseInt(e.target.value) : null
               })}
               fullWidth
             />

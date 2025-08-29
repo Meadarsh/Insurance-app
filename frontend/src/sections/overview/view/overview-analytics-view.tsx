@@ -151,9 +151,9 @@ export function OverviewAnalyticsView() {
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(null), 3000);
       
-    } catch (error) {
-      console.error('Error deleting company:', error);
-      setError('Failed to delete company. Please try again.');
+    } catch (errorr:any) {
+      console.error('Error deleting company:', errorr);
+      setError(errorr.response.data.message);
       setTimeout(() => setError(null), 3000);
     } finally {
       setLoading(false);

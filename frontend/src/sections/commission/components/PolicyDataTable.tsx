@@ -270,7 +270,7 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
         </DialogTitle>
         <DialogContent>
           <DialogContentText id="alert-dialog-description">
-            Are you sure you want to delete "{selectedCompanyForDelete?.name}"? This action cannot be undone.
+            Are you sure you want to delete &quot;{selectedCompanyForDelete?.name}&quot;? This action cannot be undone.
             <br /><br />
             <strong>Warning:</strong> This will also delete all associated data including policies and master records.
           </DialogContentText>
