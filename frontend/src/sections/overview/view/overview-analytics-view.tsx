@@ -347,7 +347,7 @@ export function OverviewAnalyticsView() {
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
          {analyticsData.totals?.profit>0 && <AnalyticsWidgetSummary
-            title="Profit"
+            title="Total revenue"
             total={analyticsData.totals?.profit || 0}
             color="error"
             icon={<img alt="Messages" src="/assets/icons/glass/ic-glass-message.svg" />}
