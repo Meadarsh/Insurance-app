@@ -112,7 +112,7 @@ export function OverviewAnalyticsView() {
     }, 120000); // Increased to 120 seconds for better performance
 
     return () => clearInterval(interval);
-  }, [fetchAnalyticsData]); // Removed analyticsData and loading/refreshing from dependencies
+  }, [fetchAnalyticsData,company]); // Removed analyticsData and loading/refreshing from dependencies
 
   const [companies, setCompanies] = useState([]);
   useEffect(() => {
