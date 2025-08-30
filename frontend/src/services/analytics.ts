@@ -63,14 +63,14 @@ const isCacheValid = (): boolean =>
 // Main analytics API object
 export const analyticsAPI = {
   // Get dashboard analytics with caching
-  async getDashboardAnalytics(companyId?: string): Promise<AnalyticsData> {
+  async getDashboardAnalytics(companyId?: string[]): Promise<AnalyticsData> {
     // Return cached data if valid
     if (isCacheValid()) {
       return analyticsCache!;
     }
 
     try {
-      const response = await ApiInstance.get('/analytics/company/'+companyId);
+      const response = await ApiInstance.post('/analytics/company/',{companyIds:companyId});
       
       if (response.status !== 200) {
         throw new Error(`HTTP error! status: ${response.status}`);

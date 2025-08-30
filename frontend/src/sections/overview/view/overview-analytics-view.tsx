@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -17,6 +18,12 @@ import UploadPolicyFileDialog from 'src/sections/commission/components/UploadPol
 import { CloudUpload } from '@mui/icons-material';
 import UploadMasterFileDialog from 'src/sections/commission/components/UploadMasterFileDialog';
 
+interface Company {
+  _id: string;
+  name: string;
+  // Add other company properties as needed
+}
+
 // ----------------------------------------------------------------------
 
 export function OverviewAnalyticsView() {
@@ -27,20 +34,24 @@ export function OverviewAnalyticsView() {
   const [success, setSuccess] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [isNavigating, setIsNavigating] = useState(false);
-  const [company, setCompany] = useState('');
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  
+  // Get company IDs from URL or use empty array
+  const selectedCompanyIds = useMemo(() => {
+    const ids = searchParams.get('companies');
+    return ids ? ids.split(',') : [];
+  }, [searchParams]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [isUploading, setIsUploading] = useState(false);
-  const [selectedCompany, setSelectedCompany] = useState<any>(null);
   const [policyFileDialogOpen, setPolicyFileDialogOpen] = useState(false);
   const [masterFileDialogOpen, setMasterFileDialogOpen] = useState(false);
 
 
-  const fetchAnalyticsData = useCallback(async (isRefresh = false) => {
-    // Don't fetch if navigating
-    if (isNavigating) return;
-    
+  const fetchAnalyticsData = useCallback(async (isRefresh = false, companyIdsToFetch = selectedCompanyIds) => {
     try {
       if (isRefresh) {
         setRefreshing(true);
@@ -50,27 +61,28 @@ export function OverviewAnalyticsView() {
       setError(null);
       setSuccess(null);
       
-      const data = await analyticsAPI.getDashboardAnalytics(company);
+      const ids = companyIdsToFetch.length > 0 ? companyIdsToFetch : [];      
+      const data:any = await analyticsAPI.getDashboardAnalytics(ids);
       
-      setAnalyticsData(data);
-      setRetryCount(0); // Reset retry count on success
+      setAnalyticsData(data.data);
+      setRetryCount(0);
       
       if (isRefresh) {
         setSuccess('Data refreshed successfully!');
-        // Clear success message after 3 seconds
         setTimeout(() => setSuccess(null), 3000);
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Dashboard: Failed to fetch analytics data:', err);
-      setError('Failed to load dashboard data. Please try again.');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load dashboard data';
+      setError(errorMessage);
       setAnalyticsData(null);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [isNavigating,company]);
+  }, [isNavigating, selectedCompanyIds]);
 
-  const handleRefresh = useCallback(async () => {
+  const handleRefresh = async () => {
     if (refreshing) return; // Prevent multiple simultaneous refreshes
     
     try {
@@ -78,23 +90,20 @@ export function OverviewAnalyticsView() {
       analyticsAPI.clearCache();
       
       await fetchAnalyticsData(true);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Refresh failed:', err);
       setError('Refresh failed. Please try again.');
     }
-  }, [refreshing, fetchAnalyticsData]);
+  };
 
-  const handleRetry = useCallback(() => {
-    setRetryCount(prev => prev + 1);
+  // Effect for initial load and when selectedCompanyIds changes
+  useEffect(() => {
     fetchAnalyticsData();
   }, [fetchAnalyticsData]);
 
+  // Set up real-time updates
   useEffect(() => {
-    fetchAnalyticsData();
-
-    // Set up real-time updates every 120 seconds (reduced from 60s for better performance)
     const interval = setInterval(async () => {
-      // Only update if not currently loading or refreshing
       if (!loading && !refreshing && analyticsData) {
         try {
           const realTimeData = await analyticsAPI.getRealTimeData();
@@ -106,26 +115,54 @@ export function OverviewAnalyticsView() {
           }
         } catch (err) {
           console.warn('Failed to fetch real-time data:', err instanceof Error ? err.message : 'Unknown error');
-          // Don't show error for real-time updates, just log it
         }
       }
-    }, 120000); // Increased to 120 seconds for better performance
+    }, 120000);
 
     return () => clearInterval(interval);
-  }, [fetchAnalyticsData,company]); // Removed analyticsData and loading/refreshing from dependencies
+  }, [loading, refreshing, analyticsData]);
 
-  const [companies, setCompanies] = useState([]);
+  // Load companies on component mount
   useEffect(() => {
-    CompanyApi.getCompanies().then((res) => {
-      setCompanies(res.data);
-      setCompany(res.data[0]._id);
-    });
+    const loadCompanies = async () => {
+      try {
+        const response = await CompanyApi.getCompanies();
+        setCompanies(response.data as Company[]);
+        
+        // Only set default company if no company is selected in URL
+        if (response.data.length > 0 && selectedCompanyIds.length === 0) {
+          const defaultCompanyId = response.data[0]._id;
+          setSearchParams({ companies: defaultCompanyId });
+          setSelectedCompany(response.data[0] as Company);
+        }
+      } catch (errorr: any) {
+        console.error('Failed to load companies:', errorr);
+        const errorMessage = errorr instanceof Error ? errorr.message : 'Failed to load companies';
+        setError(errorMessage);
+      }
+    };
+
+    loadCompanies();
   }, []);
 
-  const handleChangeCompany = (companyId: string) => {
-    setCompany(companyId);
-    // Refresh data when company changes
-    fetchAnalyticsData();
+  const handleChangeCompany = async (companyIds: string[]) => {
+    // Update URL with selected company IDs
+    setSearchParams(companyIds.length > 0 ? { companies: companyIds.join(',') } : {});
+    
+    // Clear the cache to ensure we get fresh data
+    analyticsAPI.clearCache();
+    
+    // Update the selected company
+    const firstCompany = companyIds.length > 0 ? companies.find(c => c._id === companyIds[0]) || null : null;
+    setSelectedCompany(firstCompany);
+    
+    // Force a fresh API call with the new company IDs
+    try {
+      await fetchAnalyticsData(false, companyIds);
+    } catch (errorr: any) {
+      console.error('Error fetching analytics data:', errorr);
+      setError(errorr.response.data.message);
+    }
   };
 
   const handleDeleteCompany = async () => {
@@ -136,12 +173,13 @@ export function OverviewAnalyticsView() {
       await CompanyApi.deleteCompany(selectedCompany._id);
       
       // Update the companies list
-      const updatedCompanies = companies.filter((c:any) => c._id !== selectedCompany._id);
+      const updatedCompanies = companies.filter((c) => c._id !== selectedCompany._id);
       setCompanies(updatedCompanies);
       
       // Reset selection if the deleted company was selected
-      if (company === selectedCompany._id) {
-        setCompany('');
+      if (selectedCompanyIds.includes(selectedCompany._id)) {
+        const newCompanyIds = selectedCompanyIds.filter(id => id !== selectedCompany._id);
+        setSearchParams(newCompanyIds.length > 0 ? { companies: newCompanyIds.join(',') } : {});
         setSelectedCompany(null);
         setAnalyticsData(null);
       }
@@ -150,8 +188,7 @@ export function OverviewAnalyticsView() {
       
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(null), 3000);
-      
-    } catch (errorr:any) {
+    } catch (errorr: any) {
       console.error('Error deleting company:', errorr);
       setError(errorr.response.data.message);
       setTimeout(() => setError(null), 3000);
@@ -168,16 +205,14 @@ export function OverviewAnalyticsView() {
     fetchAnalyticsData()
   }
 
-  const handleMasterFileUploaded = (fileName: string, fileType: 'master' | 'policy') => {
+  const handleMasterFileUploaded = (fileName: string) => {
     setSuccessMessage(`Master file "${fileName}" uploaded successfully!`);
     setShowSuccessMessage(true);
     setIsUploading(false);
     CompanyApi.getCompanies().then((res) => {
-      setCompanies(res.data);
-      setCompany(res.data[0]._id);
+      setCompanies(res.data as Company[]);
     });
   };
-
 
   // Show loading only on initial load
   if (loading && !analyticsData) {
@@ -252,17 +287,17 @@ export function OverviewAnalyticsView() {
           Hi, Welcome back 👋
         </Typography>
          <Autocomplete
-                disablePortal
+                multiple
                 options={companies}
-                getOptionLabel={(option: any) => option.name || ''}
-                value={companies.find((c: any) => c._id === company) || null}
+                getOptionLabel={(option) => option.name}
+                value={companies.filter(c => selectedCompanyIds.includes(c._id))}
                 onChange={(_, newValue) => {
-                  setSelectedCompany(newValue);
-                  if (newValue) {
-                    handleChangeCompany(newValue._id);
+                  if (Array.isArray(newValue)) {
+                    handleChangeCompany(newValue.map(c => c._id));
                   }
                 }}
-                sx={{ width: 300, mt: 1, '& .MuiInputBase-root': { height: '40px' } }}
+                sx={{ width: 300, mt: 1, '& .MuiInputBase-root': { minHeight: '40px' } }}
+
                 renderOption={(props, option) => (
                   <li {...props} style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
                     <span>{option.name}</span>
@@ -306,7 +341,7 @@ export function OverviewAnalyticsView() {
       </Box>
 
       {/* Analytics Widgets Grid */}
-     {(company&&analyticsData) && <Grid container spacing={3}>
+      {selectedCompanyIds.length>0 && analyticsData && <Grid container spacing={3}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
          {analyticsData.totals?.premium>0 && <AnalyticsWidgetSummary
             title="Premium "
@@ -385,7 +420,7 @@ export function OverviewAnalyticsView() {
       </Box>}
       {(analyticsData?.totals?.premium===0&&analyticsData?.totals?.commission===0&&analyticsData?.totals?.reward===0&&analyticsData?.totals?.policies===0|| !analyticsData?.totals) &&<>
       
-      {company? <Button
+      {companies.length>0? <Button
             variant="contained"
             size="small"
             startIcon={<CloudUpload />}
@@ -395,7 +430,7 @@ export function OverviewAnalyticsView() {
           >
             {isUploading ? 'Uploading...' : 'Upload File (Policy)'}
           </Button>:
-           <Button
+        <Button
            variant="contained"
            startIcon={<CloudUpload />}
            onClick={() => setMasterFileDialogOpen(true)}

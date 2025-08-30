@@ -4,28 +4,50 @@ import Policy from "../models/policy.model.js";
 
 export const getCompanySummary = async (req, res) => {
   try {
-    const { companyId } = req.params;
-
-    if (!mongoose.isValidObjectId(companyId)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid company id" });
+    // Get company IDs from either request body (for POST) or params (for GET)
+    let companyIds = [];
+    
+    if (req.method === 'POST' && req.body.companyIds) {
+      // Handle array of company IDs from request body
+      companyIds = Array.isArray(req.body.companyIds) 
+        ? req.body.companyIds 
+        : [req.body.companyIds];
+    } else if (req.params.companyId) {
+      // Handle single company ID from URL parameter
+      companyIds = [req.params.companyId];
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'No company IDs provided. Use POST /company with {companyIds: [...]} or GET /company/:companyId',
+      });
     }
 
-    const company = await Company.findOne({
-      _id: companyId,
+    // Validate all company IDs
+    const invalidIds = companyIds.filter(id => !mongoose.isValidObjectId(id));
+    if (invalidIds.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid company ID(s): ${invalidIds.join(', ')}`,
+      });
+    }
+
+    // Find companies
+    const companies = await Company.find({
+      _id: { $in: companyIds },
       createdBy: req.user._id,
     })
       .select("_id name totals lastTotalsAt updatedAt createdAt")
       .lean();
 
-    if (!company) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Company not found" });
+    if (companies.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: companyIds.length === 1 ? "Company not found" : "No companies found",
+      });
     }
 
-    const t = company.totals || {
+    // Initialize aggregated totals
+    const aggregatedTotals = {
       policies: 0,
       premium: 0,
       commission: 0,
@@ -33,22 +55,54 @@ export const getCompanySummary = async (req, res) => {
       profit: 0,
     };
 
+    // Process and aggregate companies data
+    const companiesData = companies.map(company => {
+      const t = company.totals || {
+        policies: 0,
+        premium: 0,
+        commission: 0,
+        reward: 0,
+        profit: 0,
+      };
+
+      // Add to aggregated totals
+      aggregatedTotals.policies += t.policies || 0;
+      aggregatedTotals.premium += t.premium || 0;
+      aggregatedTotals.commission += t.commission || 0;
+      aggregatedTotals.reward += t.reward || 0;
+      aggregatedTotals.profit += t.profit || 0;
+
+      return {
+        company: {
+          id: company._id,
+          name: company.name,
+        },
+        totals: {
+          policies: t.policies || 0,
+          premium: t.premium || 0,
+          commission: t.commission || 0,
+          reward: t.reward || 0,
+          profit: t.profit || 0,
+        },
+        lastUpdated: company.lastTotalsAt || company.updatedAt,
+      };
+    });
+
+    // Find the most recent update time
+    const lastUpdated = Math.max(
+      ...companies.map(c => 
+        (c.lastTotalsAt || c.updatedAt).getTime()
+      )
+    );
+
     return res.json({
       success: true,
-      company: {
-        id: company._id,
-        name: company.name,
+      data: {
+        companies: companiesData,
+        totals: aggregatedTotals,
+        companyCount: companies.length,
+        lastUpdated: new Date(lastUpdated),
       },
-      totals: {
-        policies: t.policies,
-        premium: t.premium,
-        commission: t.commission,
-        reward: t.reward,
-        profit: t.profit,
-      },
-      lastTotalsAt: company.lastTotalsAt || null,
-      updatedAt: company.updatedAt,
-      createdAt: company.createdAt,
     });
   } catch (err) {
     console.error("getCompanySummary error:", err);
@@ -141,11 +195,5 @@ export const listCompanyPolicies = async (req, res) => {
   }
 };
 
-function buildSort(sortStr) {
-  const s = String(sortStr || "").trim();
-  if (!s) return { createdAt: -1 };
-  const dir = s.startsWith("-") ? -1 : 1;
-  const field = s.replace(/^-/, "");
-  return { [field]: dir };
-}
+
 const listMasterData = async (req, res) => {};

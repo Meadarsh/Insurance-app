@@ -56,7 +56,7 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [selectedPolicy, setSelectedPolicy] = useState<PolicyData | null>(null);
   const [editingPolicy, setEditingPolicy] = useState<Partial<PolicyData>>({});
-  const [company, setCompany] = useState('');
+  const [company, setCompany] = useState<string[]>([]);
   const [notification, setNotification] = useState({
     open: false,
     message: '',
@@ -70,11 +70,11 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
     useEffect(() => {
       CompanyApi.getCompanies().then((res) => {
         setCompanies(res.data);
-        setCompany(res.data[0]._id);
+        setCompany([res.data[0]._id]);
       });
     }, []);
   
-    const handleChangeCompany = (companyData: string) => {
+    const handleChangeCompany = (companyData: string[]) => {
       setCompany(companyData);
     };
 
@@ -90,8 +90,8 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
         setCompanies(updatedCompanies);
         
         // Reset selection if the deleted company was selected
-        if (company === selectedCompanyForDelete._id) {
-          setCompany('');
+        if (company.includes(selectedCompanyForDelete._id)) {
+          setCompany([]);
           setPolicies([]);
           setTotalCount(0);
         }
@@ -123,7 +123,7 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
         return;
       }
       setLoading(true);
-      const policiesResponse = await commissionPolicyAPI.getPolicies(company);
+      const policiesResponse = await policyAPI.getPolicies(company,page,rowsPerPage);
       setPolicies(policiesResponse.data);
       setTotalCount(policiesResponse.pagination.total);
     } catch (error) {
@@ -297,39 +297,44 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
         <div className='flex gap-2 items-center'>
         <Typography variant="h6">Policy Data Management</Typography>
         <Autocomplete
-          disablePortal
-          options={companies}
-          getOptionLabel={(option: Company) => option.name || ''}
-          value={companies.find(c => c._id === company) || null}
-          onChange={(_, newValue) => newValue && handleChangeCompany(newValue._id)}
-          sx={{ width: 300, '& .MuiInputBase-root': { height: '40px' } }}
-          renderOption={(props, option) => (
-            <li {...props} style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-              <span>{option.name}</span>
-              <IconButton
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedCompanyForDelete(option);
-                  setDeleteDialogOpen(true);
+                multiple
+                options={companies}
+                getOptionLabel={(option) => option.name}
+                value={companies.filter(c => company.includes(c._id))}
+                onChange={(_, newValue) => {
+                  if (Array.isArray(newValue)) {
+                    handleChangeCompany(newValue.map(c => c._id));
+                  }
                 }}
-                color="error"
-                sx={{ '&:hover': { backgroundColor: 'rgba(244, 67, 54, 0.08)' } }}
-                title="Delete Company"
-              >
-                <DeleteIcon fontSize="small" />
-              </IconButton>
-            </li>
-          )}
-          renderInput={(params) => (
-            <TextField 
-              {...params} 
-              label="Select Company" 
-              size="small"
-              variant="outlined"
-            />
-          )}
-        />
+                sx={{ width: 300, mt: 1, '& .MuiInputBase-root': { minHeight: '40px' } }}
+
+                renderOption={(props, option) => (
+                  <li {...props} style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                    <span>{option.name}</span>
+                    <IconButton
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedCompanyForDelete(option);
+                        setDeleteDialogOpen(true);
+                      }}
+                      color="error"
+                      sx={{ '&:hover': { backgroundColor: 'rgba(244, 67, 54, 0.08)' } }}
+                      title="Delete Company"
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </li>
+                )}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Select Company"
+                    size="small"
+                    variant="outlined"
+                  />
+                )}
+              />
         </div>
         <Button
           variant="contained"
