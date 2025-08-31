@@ -32,6 +32,8 @@ import {
   Delete as DeleteIcon,
   Add as AddIcon,
   Visibility as ViewIcon,
+  Download,
+  Done,
 } from '@mui/icons-material';
 import { commissionPolicyAPI, policyAPI, PolicyData } from '../../../services/policy';
 import { CompanyApi } from 'src/services/company';
@@ -57,10 +59,16 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
   const [selectedPolicy, setSelectedPolicy] = useState<PolicyData | null>(null);
   const [editingPolicy, setEditingPolicy] = useState<Partial<PolicyData>>({});
   const [company, setCompany] = useState<string[]>([]);
-  const [notification, setNotification] = useState({
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>({
     open: false,
     message: '',
-    severity: 'success' as 'success' | 'error' | 'warning' | 'info'
+    severity: 'info',
+  });
+
+  const [notification, setNotification] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>({
+    open: false,
+    message: '',
+    severity: 'info',
   });
   
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -169,6 +177,70 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
   };
 
   // Handle delete
+  const downloadReport = () => {
+    if (!policies || policies.length === 0) {
+      setSnackbar({
+        open: true,
+        message: 'No data to export',
+        severity: 'warning',
+      });
+      return;
+    }
+
+    // Define CSV headers
+    const headers = [
+      'Policy Number',
+      'Policy Name',
+      'Variant',
+      'Term (Yrs)',
+      'PPT (Yrs)',
+      'Net Premium (₹)',
+      'Reward (₹)',
+      'Reward %',
+      'Commission (₹)',
+      'Commission %',
+      'Total Profit (₹)',
+      'Total Rate %',
+      'Created At'
+    ];
+
+    // Convert data to CSV rows
+    const csvRows = [];
+    csvRows.push(headers.join(','));
+
+    policies.forEach((policy) => {
+      const row = [
+        `"${policy.policyNumber || ''}"`,
+        `"${policy.policyName || ''}"`,
+        `"${policy.variant || ''}"`,
+        policy.policyTerm || '0',
+        policy.ppt || '0',
+        policy.netPrice?.toString() || '0',
+        policy.rewardAmount?.toString() || '0',
+        policy.rewardPct?.toString() || '0',
+        policy.commissionAmount?.toString() || '0',
+        policy.commissionPct?.toString() || '0',
+        policy.totalProfitAmount?.toString() || '0',
+        policy.totalRatePct?.toString() || '0',
+        `"${new Date(policy.createdAt).toLocaleDateString()}"`
+      ];
+      csvRows.push(row.join(','));
+    });
+
+    // Create CSV content
+    const csvContent = csvRows.join('\n');
+    
+    // Create download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `policy_report_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleDelete = async (id: string) => {
     if (!id) return;
     
@@ -343,6 +415,13 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
         >
           Add Policy
         </Button>
+        <Button
+          variant="contained"
+          startIcon={<Download />}
+          onClick={downloadReport}
+        >
+          Download
+        </Button>
       </Box>
 
       {/* Table */}
@@ -513,15 +592,28 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
       <Snackbar
         open={notification.open}
         autoHideDuration={6000}
-        onClose={handleCloseNotification}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        onClose={() => setNotification({ ...notification, open: false })}
       >
         <Alert
-          onClose={handleCloseNotification}
+          onClose={() => setNotification({ ...notification, open: false })}
           severity={notification.severity}
           sx={{ width: '100%' }}
         >
           {notification.message}
+        </Alert>
+      </Snackbar>
+      
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
         </Alert>
       </Snackbar>
     </Box>
