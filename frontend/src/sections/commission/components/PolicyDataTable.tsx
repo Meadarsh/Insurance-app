@@ -408,7 +408,8 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
                 )}
               />
         </div>
-        <Button
+       <div className='flex gap-2 items-center'>
+       <Button
           variant="contained"
           startIcon={<AddIcon />}
           onClick={handleAdd}
@@ -422,6 +423,7 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
         >
           Download
         </Button>
+       </div>
       </Box>
 
       {/* Table */}
