@@ -47,7 +47,6 @@ async function connectDB() {
   return cached.conn;
 }
 
-// Handle connection events
 mongoose.connection.on("connected", () => {
   console.log("Mongoose connected to DB");
 });

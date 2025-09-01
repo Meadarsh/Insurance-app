@@ -1,7 +1,10 @@
 import express from "express";
 import multer from "multer";
 import protect from "../middleware/auth.js";
-import { uploadPolicies,CompanyiesPolicies } from "../controllers/policy.controller.js";
+import {
+  uploadPolicies,
+  getPolicies,
+} from "../controllers/policy.controller.js";
 
 const router = express.Router();
 
@@ -19,7 +22,7 @@ const upload = multer({
 });
 
 router.post("/upload", protect, upload.single("file"), uploadPolicies);
-router.post("/get", protect, CompanyiesPolicies);
+router.post("/get", protect, getPolicies);
 
 // Optional: Multer error handler for neat 400s instead of 500s
 router.use((err, req, res, next) => {

@@ -1,199 +1,183 @@
+// controllers/analytics.controller.js
 import mongoose from "mongoose";
-import Company from "../models/company.model.js";
 import Policy from "../models/policy.model.js";
+import Company from "../models/company.model.js";
 
+// ---- helpers ----
+const toInt = (v) => (v === undefined ? undefined : Number(v));
+const inRange = (n, lo, hi) => Number.isInteger(n) && n >= lo && n <= hi;
+
+/**
+ * Dashboard summary for a company (single year only)
+ * GET /api/analytics/company/:companyId/summary?year=2025
+ * GET /api/analytics/company/:companyId/summary?year=2025&mStart=3&mEnd=7
+ * (single month => mStart=mEnd)
+ */
 export const getCompanySummary = async (req, res) => {
-  try {
-    // Get company IDs from either request body (for POST) or params (for GET)
-    let companyIds = [];
-    
-    if (req.method === 'POST' && req.body.companyIds) {
-      // Handle array of company IDs from request body
-      companyIds = Array.isArray(req.body.companyIds) 
-        ? req.body.companyIds 
-        : [req.body.companyIds];
-    } else if (req.params.companyId) {
-      // Handle single company ID from URL parameter
-      companyIds = [req.params.companyId];
-    } else {
-      return res.status(400).json({
-        success: false,
-        message: 'No company IDs provided. Use POST /company with {companyIds: [...]} or GET /company/:companyId',
-      });
-    }
-
-    // Validate all company IDs
-    const invalidIds = companyIds.filter(id => !mongoose.isValidObjectId(id));
-    if (invalidIds.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid company ID(s): ${invalidIds.join(', ')}`,
-      });
-    }
-
-    // Find companies
-    const companies = await Company.find({
-      _id: { $in: companyIds },
-      createdBy: req.user._id,
-    })
-      .select("_id name totals lastTotalsAt updatedAt createdAt")
-      .lean();
-
-    if (companies.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: companyIds.length === 1 ? "Company not found" : "No companies found",
-      });
-    }
-
-    // Initialize aggregated totals
-    const aggregatedTotals = {
-      policies: 0,
-      premium: 0,
-      commission: 0,
-      reward: 0,
-      profit: 0,
-    };
-
-    // Process and aggregate companies data
-    const companiesData = companies.map(company => {
-      const t = company.totals || {
-        policies: 0,
-        premium: 0,
-        commission: 0,
-        reward: 0,
-        profit: 0,
-      };
-
-      // Add to aggregated totals
-      aggregatedTotals.policies += t.policies || 0;
-      aggregatedTotals.premium += t.premium || 0;
-      aggregatedTotals.commission += t.commission || 0;
-      aggregatedTotals.reward += t.reward || 0;
-      aggregatedTotals.profit += t.profit || 0;
-
-      return {
-        company: {
-          id: company._id,
-          name: company.name,
-        },
-        totals: {
-          policies: t.policies || 0,
-          premium: t.premium || 0,
-          commission: t.commission || 0,
-          reward: t.reward || 0,
-          profit: t.profit || 0,
-        },
-        lastUpdated: company.lastTotalsAt || company.updatedAt,
-      };
-    });
-
-    // Find the most recent update time
-    const lastUpdated = Math.max(
-      ...companies.map(c => 
-        (c.lastTotalsAt || c.updatedAt).getTime()
-      )
-    );
-
-    return res.json({
-      success: true,
-      data: {
-        companies: companiesData,
-        totals: aggregatedTotals,
-        companyCount: companies.length,
-        lastUpdated: new Date(lastUpdated),
-      },
-    });
-  } catch (err) {
-    console.error("getCompanySummary error:", err);
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal server error" });
-  }
-};
-//pagination needs to be handled by frontend (Adarsh please take care )
-export const listCompanyPolicies = async (req, res) => {
   try {
     const { companyId } = req.params;
 
-    if (!mongoose.isValidObjectId(companyId)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid company id" });
-    }
-
-    // simple ownership guard
-    const companyExists = await Company.exists({
+    // verify company belongs to user
+    const company = await Company.findOne({
       _id: companyId,
       createdBy: req.user._id,
-    });
-    if (!companyExists) {
+    })
+      .select("_id name")
+      .lean();
+
+    if (!company) {
       return res
         .status(404)
         .json({ success: false, message: "Company not found" });
     }
 
-    const page = Math.max(parseInt(req.query.page) || 1, 1);
-    const limit = Math.min(parseInt(req.query.limit) || 20, 200);
-    const skip = (page - 1) * limit;
-    const search = (req.query.search || "").trim();
-    const sort = buildSort(req.query.sort || "-createdAt");
+    // --- inputs: year (required); mStart/mEnd optional ---
+    const year = toInt(req.query.year);
+    const mStart = toInt(req.query.mStart);
+    const mEnd = toInt(req.query.mEnd);
 
-    const match = { company: new mongoose.Types.ObjectId(companyId) };
-    if (search) {
-      match.$or = [
-        { policyNo: { $regex: search, $options: "i" } },
-        { productName: { $regex: search, $options: "i" } },
-        { productVariant: { $regex: search, $options: "i" } },
-      ];
+    if (!inRange(year, 1970, 3000)) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Valid 'year' (e.g., 2025) is required",
+        });
     }
 
-    // **Key trick**: fetch limit+1 items to detect if there's a next page
-    const limitPlusOne = limit + 1;
+    // month validations (if provided)
+    if (
+      (mStart !== undefined && !inRange(mStart, 1, 12)) ||
+      (mEnd !== undefined && !inRange(mEnd, 1, 12))
+    ) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "'mStart'/'mEnd' must be between 1 and 12",
+        });
+    }
+    if (mStart !== undefined && mEnd === undefined) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Provide both 'mStart' and 'mEnd' (or neither)",
+        });
+    }
+    if (mEnd !== undefined && mStart === undefined) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Provide both 'mStart' and 'mEnd' (or neither)",
+        });
+    }
+    if (mStart !== undefined && mEnd !== undefined && mStart > mEnd) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "'mStart' cannot be greater than 'mEnd'",
+        });
+    }
 
-    const rows = await Policy.find(match)
-      .sort(sort)
-      .skip(skip)
-      .limit(limitPlusOne)
-      .select(
-        "productName policyNo premiumPayingTerm netPremium totalProfit commissionAmount commissionPct rewardAmount rewardPct totalRatePct policyTerm productVariant createdAt"
-      )
-      .lean();
+    const match = {
+      company: new mongoose.Types.ObjectId(companyId),
+      originalIssueYear: year,
+    };
 
-    const hasNext = rows.length > limit;
-    const trimmed = hasNext ? rows.slice(0, limit) : rows;
+    if (mStart !== undefined && mEnd !== undefined) {
+      match.originalIssueMonth = { $gte: mStart, $lte: mEnd };
+    }
+
+    const [summary] = await Policy.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: null,
+          policies: { $sum: 1 },
+          premium: { $sum: "$netPremium" },
+          commission: { $sum: "$commissionAmount" },
+          reward: { $sum: "$rewardAmount" },
+          profit: { $sum: "$totalProfit" },
+        },
+      },
+    ]);
 
     return res.json({
       success: true,
-      data: trimmed.map((p) => ({
-        policyName: p.productName,
-        policyNumber: p.policyNo,
-        ppt: p.premiumPayingTerm,
-        netPrice: p.netPremium,
-        totalProfitAmount: p.totalProfit,
-        totalRatePct: p.totalRatePct,
-        commissionAmount: p.commissionAmount,
-        commissionPct: p.commissionPct,
-        rewardAmount: p.rewardAmount,
-        rewardPct: p.rewardPct,
-        policyTerm: p.policyTerm,
-        variant: p.productVariant,
-        createdAt: p.createdAt,
-      })),
-      pageInfo: {
-        page,
-        limit,
-        hasNext,
-        nextPage: hasNext ? page + 1 : null,
+      company: { id: company._id, name: company.name },
+      filter: {
+        year,
+        mStart: mStart ?? null,
+        mEnd: mEnd ?? null,
+      },
+      totals: summary || {
+        policies: 0,
+        premium: 0,
+        commission: 0,
+        reward: 0,
+        profit: 0,
       },
     });
   } catch (err) {
-    console.error("listCompanyPolicies error:", err);
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal server error" });
+    console.error("getCompanySummary error:", err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
+/**
+ * Monthly breakdown for charts (single year only)
+ * GET /api/analytics/company/:companyId/monthly?year=2025
+ * (always returns the 12 months present for that year; frontend can still
+ * slice to a sub-range if user picked mStart/mEnd)
+ */
+export const getMonthlyBreakdown = async (req, res) => {
+  try {
+    const { companyId } = req.params;
+    const year = Number(req.query.year);
 
-const listMasterData = async (req, res) => {};
+    if (!inRange(year, 1970, 3000)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Valid 'year' is required" });
+    }
+
+    const match = {
+      company: new mongoose.Types.ObjectId(companyId),
+      originalIssueYear: year,
+    };
+
+    const data = await Policy.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: "$originalIssueMonth",
+          policies: { $sum: 1 },
+          premium: { $sum: "$netPremium" },
+          commission: { $sum: "$commissionAmount" },
+          reward: { $sum: "$rewardAmount" },
+          profit: { $sum: "$totalProfit" },
+        },
+      },
+      {
+        $project: {
+          month: "$_id",
+          _id: 0,
+          policies: 1,
+          premium: 1,
+          commission: 1,
+          reward: 1,
+          profit: 1,
+        },
+      },
+      { $sort: { month: 1 } },
+    ]);
+
+    return res.json({ success: true, year, data });
+  } catch (err) {
+    console.error("getMonthlyBreakdown error:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
