@@ -78,7 +78,7 @@ export function OverviewAnalyticsView() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [isNavigating, selectedCompanyIds]);
+  }, [isNavigating, selectedCompanyIds, startDate, endDate, year]);
 
   const handleRefresh = async () => {
     if (refreshing) return; // Prevent multiple simultaneous refreshes

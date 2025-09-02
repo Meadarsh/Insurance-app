@@ -41,6 +41,8 @@ const DashboardFilter: React.FC<DashboardFilterProps> = ({
     companiesError,
     deleteCompany
   } = useFilter();
+console.log(endDate);
+console.log(startDate);
 
   // Notify parent when loading state changes
   useEffect(() => {
@@ -89,23 +91,21 @@ const DashboardFilter: React.FC<DashboardFilterProps> = ({
 
   const handleStartMonthChange = (event: SelectChangeEvent<number>) => {
     const month = Number(event.target.value);
-    const newDate = new Date(year, month - 1, 1);
-    setStartDate(newDate);
+    setStartDate(month);
     
     // If end date is before start date, update it to be the same as start date
-    if (endDate && newDate > endDate) {
-      setEndDate(newDate);
+    if (endDate && month > endDate) {
+      setEndDate(month);
     }
   };
 
   const handleEndMonthChange = (event: SelectChangeEvent<number>) => {
     const month = Number(event.target.value);
-    const newDate = new Date(year, month - 1, 1);
-    setEndDate(newDate);
+    setEndDate(month);
     
     // If start date is after end date, update it to be the same as end date
-    if (startDate && newDate < startDate) {
-      setStartDate(newDate);
+    if (startDate && month < startDate) {
+      setStartDate(month);
     }
   };
 
@@ -264,7 +264,7 @@ labelId="year-select-label"
                 <Select
                 sx={{minWidth: 200}}
                   labelId="start-month-label"
-                  value={startDate ? startDate.getMonth() + 1 : ''}
+                  value={startDate ? startDate : ''}
                   label="Start Month"
                   onChange={handleStartMonthChange}
                 >
@@ -280,7 +280,7 @@ labelId="year-select-label"
                 <Select
                 sx={{minWidth: 200}}
                   labelId="end-month-label"
-                  value={endDate ? endDate.getMonth() + 1 : ''}
+                  value={endDate ? endDate : ''}
                   label="End Month"
                   onChange={handleEndMonthChange}
                 >
@@ -288,7 +288,7 @@ labelId="year-select-label"
                     <MenuItem 
                       key={month.value} 
                       value={month.value}
-                      disabled={!startDate || month.value < (startDate.getMonth() + 1)}
+                      disabled={!startDate || month.value < startDate}
                     >
                       {month.label}
                     </MenuItem>

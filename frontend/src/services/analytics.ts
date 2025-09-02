@@ -63,8 +63,12 @@ const isCacheValid = (): boolean =>
 // Main analytics API object
 export const analyticsAPI = {
   // Get dashboard analytics with caching
-  async getDashboardAnalytics(companyId?: string[], year?: number, mStart?: Date, mEnd?: Date): Promise<AnalyticsData> {
+  async getDashboardAnalytics(companyId?: string[], year?: number, mStart?: number, mEnd?: number): Promise<AnalyticsData> {
     // Return cached data if valid
+    console.log("companyId",companyId);
+    console.log("year",year);
+    console.log("mStart",mStart);
+    console.log("mEnd",mEnd);
     if (isCacheValid()) {
       return analyticsCache!;
     }
@@ -73,8 +77,8 @@ export const analyticsAPI = {
       // Format dates (month is 0-indexed in JS, so we add 1)
       const params = new URLSearchParams();
       if (year) params.append('year', year.toString());
-      if (mStart) params.append('mStart', (mStart.getMonth() + 1).toString());
-      if (mEnd) params.append('mEnd', (mEnd.getMonth() + 1).toString());
+      if (mStart) params.append('mStart', mStart.toString());
+      if (mEnd) params.append('mEnd', mEnd.toString());
       
       const response = await ApiInstance.post(
         `/analytics/company${params.toString() ? `?${params.toString()}` : ''}`,

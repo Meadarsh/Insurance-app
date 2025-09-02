@@ -9,10 +9,10 @@ export interface Company {
 interface FilterContextType {
   year: number;
   setYear: (year: number) => void;
-  startDate: Date;
-  setStartDate: (date: Date) => void;
-  endDate: Date;
-  setEndDate: (date: Date) => void;
+  startDate: number;
+  setStartDate: (date: number) => void;
+  endDate: number;
+  setEndDate: (date: number) => void;
   selectedCompanyIds: string[];
   companies: Company[];
   companiesLoading: boolean;
@@ -30,21 +30,21 @@ const FilterContext = createContext<FilterContextType | undefined>(undefined);
 interface FilterProviderProps {
   children: ReactNode;
   initialYear?: number;
-  initialStartDate?: Date;
-  initialEndDate?: Date;
+  initialStartDate?: number;
+  initialEndDate?: number;
   initialSelectedCompanyIds?: string[];
 }
 
 export const FilterProvider: React.FC<FilterProviderProps> = ({
   children,
   initialYear = new Date().getFullYear(),
-  initialStartDate = new Date(new Date().getFullYear(), 0, 1), // Start of current year
-  initialEndDate = new Date(), // Current date
+  initialStartDate = new Date(new Date().getFullYear(), 0, 1).getMonth(), // Start of current year
+  initialEndDate = new Date().getMonth(), // Current date
   initialSelectedCompanyIds = [],
 }) => {
   const [year, setYear] = useState<number>(initialYear);
-  const [startDate, setStartDate] = useState<Date>(initialStartDate);
-  const [endDate, setEndDate] = useState<Date>(initialEndDate);
+  const [startDate, setStartDate] = useState<number>(initialStartDate);
+  const [endDate, setEndDate] = useState<number>(initialEndDate);
   const [selectedCompanyIds, setSelectedCompanyIds] = useState<string[]>(
     initialSelectedCompanyIds
   );
@@ -98,8 +98,8 @@ export const FilterProvider: React.FC<FilterProviderProps> = ({
   const clearFilters = useCallback(() => {
     const currentYear = new Date().getFullYear();
     setYear(currentYear);
-    setStartDate(new Date(currentYear, 0, 1));
-    setEndDate(new Date());
+    setStartDate(new Date(currentYear, 0, 1).getMonth());
+    setEndDate(new Date().getMonth());
     setSelectedCompanyIds(companies.length > 0 ? [companies[0]._id] : []);
   }, [companies]);
 
