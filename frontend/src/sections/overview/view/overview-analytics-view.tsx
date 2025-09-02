@@ -17,12 +17,10 @@ import { CompanyApi } from 'src/services/company';
 import UploadPolicyFileDialog from 'src/sections/commission/components/UploadPolicyFileDialog';
 import { CloudUpload } from '@mui/icons-material';
 import UploadMasterFileDialog from 'src/sections/commission/components/UploadMasterFileDialog';
+import DashboardFilter from 'src/components/dashboard-filter';
+import type { Company } from 'src/types/company';
+import { useFilter } from 'src/contexts/FilterContext';
 
-interface Company {
-  _id: string;
-  name: string;
-  // Add other company properties as needed
-}
 
 // ----------------------------------------------------------------------
 
@@ -34,22 +32,22 @@ export function OverviewAnalyticsView() {
   const [success, setSuccess] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [isNavigating, setIsNavigating] = useState(false);
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   
   // Get company IDs from URL or use empty array
-  const selectedCompanyIds = useMemo(() => {
-    const ids = searchParams.get('companies');
-    return ids ? ids.split(',') : [];
-  }, [searchParams]);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [policyFileDialogOpen, setPolicyFileDialogOpen] = useState(false);
   const [masterFileDialogOpen, setMasterFileDialogOpen] = useState(false);
 
+    const {
+      year,
+      endDate,
+      startDate,
+      loadCompanies,
+      selectedCompanyIds,
+      companies,
+    } = useFilter();
 
   const fetchAnalyticsData = useCallback(async (isRefresh = false, companyIdsToFetch = selectedCompanyIds) => {
     try {
@@ -60,11 +58,11 @@ export function OverviewAnalyticsView() {
       }
       setError(null);
       setSuccess(null);
-      
+      analyticsAPI.clearCache();
       const ids = companyIdsToFetch.length > 0 ? companyIdsToFetch : [];      
-      const data:any = await analyticsAPI.getDashboardAnalytics(ids);
+      const data:any = await analyticsAPI.getDashboardAnalytics(ids,year,startDate,endDate);
       
-      setAnalyticsData(data.data);
+      setAnalyticsData(data);
       setRetryCount(0);
       
       if (isRefresh) {
@@ -98,8 +96,8 @@ export function OverviewAnalyticsView() {
 
   // Effect for initial load and when selectedCompanyIds changes
   useEffect(() => {
-    fetchAnalyticsData();
-  }, [fetchAnalyticsData]);
+    fetchAnalyticsData(true,selectedCompanyIds);
+  }, [fetchAnalyticsData,selectedCompanyIds]);
 
   // Set up real-time updates
   useEffect(() => {
@@ -122,97 +120,20 @@ export function OverviewAnalyticsView() {
     return () => clearInterval(interval);
   }, [loading, refreshing, analyticsData]);
 
-  // Load companies on component mount
-  useEffect(() => {
-    const loadCompanies = async () => {
-      try {
-        const response = await CompanyApi.getCompanies();
-        setCompanies(response.data as Company[]);
-        
-        // Only set default company if no company is selected in URL
-        if (response.data.length > 0 && selectedCompanyIds.length === 0) {
-          const defaultCompanyId = response.data[0]._id;
-          setSearchParams({ companies: defaultCompanyId });
-          setSelectedCompany(response.data[0] as Company);
-        }
-      } catch (errorr: any) {
-        console.error('Failed to load companies:', errorr);
-        const errorMessage = errorr instanceof Error ? errorr.message : 'Failed to load companies';
-        setError(errorMessage);
-      }
-    };
-
-    loadCompanies();
-  }, []);
-
-  const handleChangeCompany = async (companyIds: string[]) => {
-    // Update URL with selected company IDs
-    setSearchParams(companyIds.length > 0 ? { companies: companyIds.join(',') } : {});
-    
-    // Clear the cache to ensure we get fresh data
-    analyticsAPI.clearCache();
-    
-    // Update the selected company
-    const firstCompany = companyIds.length > 0 ? companies.find(c => c._id === companyIds[0]) || null : null;
-    setSelectedCompany(firstCompany);
-    
-    // Force a fresh API call with the new company IDs
-    try {
-      await fetchAnalyticsData(false, companyIds);
-    } catch (errorr: any) {
-      console.error('Error fetching analytics data:', errorr);
-      setError(errorr.response.data.message);
-    }
-  };
-
-  const handleDeleteCompany = async () => {
-    if (!selectedCompany) return;
-    
-    try {
-      setLoading(true);
-      await CompanyApi.deleteCompany(selectedCompany._id);
-      
-      // Update the companies list
-      const updatedCompanies = companies.filter((c) => c._id !== selectedCompany._id);
-      setCompanies(updatedCompanies);
-      
-      // Reset selection if the deleted company was selected
-      if (selectedCompanyIds.includes(selectedCompany._id)) {
-        const newCompanyIds = selectedCompanyIds.filter(id => id !== selectedCompany._id);
-        setSearchParams(newCompanyIds.length > 0 ? { companies: newCompanyIds.join(',') } : {});
-        setSelectedCompany(null);
-        setAnalyticsData(null);
-      }
-      
-      setSuccess(`${selectedCompany.name} has been deleted successfully`);
-      
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (errorr: any) {
-      console.error('Error deleting company:', errorr);
-      setError(errorr.response.data.message);
-      setTimeout(() => setError(null), 3000);
-    } finally {
-      setLoading(false);
-      setDeleteDialogOpen(false);
-    }
-  };
-
   const handlePolicyFileUploaded = (fileName: string) => {
     setSuccessMessage(`Policy file "${fileName}" uploaded successfully!`);
     setShowSuccessMessage(true);
     setIsUploading(false);
-    fetchAnalyticsData()
+    fetchAnalyticsData(true,selectedCompanyIds)
   }
 
-  const handleMasterFileUploaded = (fileName: string) => {
+  const handleMasterFileUploaded = async (fileName: string) => {
     setSuccessMessage(`Master file "${fileName}" uploaded successfully!`);
     setShowSuccessMessage(true);
     setIsUploading(false);
-    CompanyApi.getCompanies().then((res) => {
-      setCompanies(res.data as Company[]);
-    });
-  };
+    await loadCompanies()
+    await fetchAnalyticsData(true,selectedCompanyIds)
+      };
 
   // Show loading only on initial load
   if (loading && !analyticsData) {
@@ -244,41 +165,6 @@ export function OverviewAnalyticsView() {
                 {successMessage}
               </Alert>
             </Snackbar>
-      {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={() => setDeleteDialogOpen(false)}
-        aria-labelledby="alert-dialog-title"
-        aria-describedby="alert-dialog-description"
-      >
-        <DialogTitle id="alert-dialog-title">
-          Delete Company
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText id="alert-dialog-description">
-            Are you sure you want to delete &quot;{selectedCompany?.name}&quot;? This action cannot be undone.
-            <br /><br />
-            <strong>Warning:</strong> This will also delete all associated data including policies and master records.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button 
-            onClick={() => setDeleteDialogOpen(false)}
-            disabled={loading}
-          >
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleDeleteCompany} 
-            color="error" 
-            disabled={loading}
-            startIcon={loading ? <CircularProgress size={20} /> : null}
-          >
-            {loading ? 'Deleting...' : 'Delete'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
       <DashboardContent maxWidth="xl">
       {/* Header with status indicator */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={{ xs: 3, md: 5 }}>
@@ -286,45 +172,7 @@ export function OverviewAnalyticsView() {
         <Typography variant="h4">
           Hi, Welcome back 👋
         </Typography>
-         <Autocomplete
-                multiple
-                options={companies}
-                getOptionLabel={(option) => option.name}
-                value={companies.filter(c => selectedCompanyIds.includes(c._id))}
-                onChange={(_, newValue) => {
-                  if (Array.isArray(newValue)) {
-                    handleChangeCompany(newValue.map(c => c._id));
-                  }
-                }}
-                sx={{ width: 300, mt: 1, '& .MuiInputBase-root': { minHeight: '40px' } }}
-
-                renderOption={(props, option) => (
-                  <li {...props} style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                    <span>{option.name}</span>
-                    <IconButton
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedCompany(option);
-                        setDeleteDialogOpen(true);
-                      }}
-                      color="error"
-                      sx={{ '&:hover': { backgroundColor: 'rgba(244, 67, 54, 0.08)' } }}
-                      title="Delete Company"
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </li>
-                )}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Select Company"
-                    size="small"
-                    variant="outlined"
-                  />
-                )}
-              />
+       <DashboardFilter handleApplyFilters={()=> fetchAnalyticsData(true,selectedCompanyIds)}/>
         </Box>
         <Box display="flex" gap={2} alignItems="center">
           {error && (

@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import { usePathname } from 'src/routes/hooks';
 import { ThemeProvider } from 'src/theme/theme-provider';
 import { AuthProvider } from './contexts/AuthContext';
+import { FilterProvider } from './contexts/FilterContext';
 
 
 // ----------------------------------------------------------------------
@@ -21,7 +22,9 @@ export default function App({ children }: AppProps) {
   return (
     <ThemeProvider>
       <AuthProvider>
-        {children}
+        <FilterProvider>
+          {children}
+        </FilterProvider>
       </AuthProvider>
     </ThemeProvider>
   );

@@ -15,17 +15,9 @@ const inRange = (n, lo, hi) => Number.isInteger(n) && n >= lo && n <= hi;
  */
 export const getCompanySummary = async (req, res) => {
   try {
-    const { companyId } = req.params;
+    const { companyIds } = req.body;
 
-    // verify company belongs to user
-    const company = await Company.findOne({
-      _id: companyId,
-      createdBy: req.user._id,
-    })
-      .select("_id name")
-      .lean();
-
-    if (!company) {
+    if (!companyIds) {
       return res
         .status(404)
         .json({ success: false, message: "Company not found" });
@@ -82,8 +74,11 @@ export const getCompanySummary = async (req, res) => {
         });
     }
 
+    // Convert string IDs to ObjectId and use $in to match any of the company IDs
+    const companyObjectIds = companyIds.map(id => new mongoose.Types.ObjectId(id));
+    
     const match = {
-      company: new mongoose.Types.ObjectId(companyId),
+      company: { $in: companyObjectIds },
       originalIssueYear: year,
     };
 
@@ -107,7 +102,6 @@ export const getCompanySummary = async (req, res) => {
 
     return res.json({
       success: true,
-      company: { id: company._id, name: company.name },
       filter: {
         year,
         mStart: mStart ?? null,
