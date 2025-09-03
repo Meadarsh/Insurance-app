@@ -324,12 +324,12 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
                   <TableCell sx={{width: '100px'}}>{policy.productVariant || 'N/A'}</TableCell>
                   <TableCell sx={{width: '100px'}}>{policy.policyTerm || 'N/A'}</TableCell>
                   <TableCell sx={{width: '100px'}}>{policy.premiumPayingTerm || 'N/A'}</TableCell>
-                  <TableCell sx={{width: '100px'}}>₹{policy.netPrice?.toLocaleString() || '0'}</TableCell>
+                  <TableCell sx={{width: '100px'}}>₹{policy.netPremium?.toLocaleString() || '0'}</TableCell>
                   <TableCell sx={{width: '100px'}}>₹{policy.rewardAmount?.toLocaleString() || '0'}</TableCell>
                   <TableCell sx={{width: '100px'}}>{policy.rewardPct || '0'}%</TableCell>
                   <TableCell sx={{width: '100px'}}>₹{policy.commissionAmount?.toLocaleString() || '0'}</TableCell>
                   <TableCell sx={{width: '100px'}}>{policy.commissionPct || '0'}%</TableCell>
-                  <TableCell sx={{width: '100px'}}>₹{policy.totalProfitAmount?.toLocaleString() || '0'}</TableCell>
+                  <TableCell sx={{width: '100px'}}>₹{policy.totalProfit?.toLocaleString() || '0'}</TableCell>
                   <TableCell sx={{width: '100px'}}>{policy.totalRatePct || '0'}%</TableCell>
                   <TableCell>
                     {policy.masterRef ? (
