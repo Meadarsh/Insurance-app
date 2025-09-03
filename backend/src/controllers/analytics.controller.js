@@ -2,17 +2,8 @@
 import mongoose from "mongoose";
 import Policy from "../models/policy.model.js";
 import Company from "../models/company.model.js";
-
-// ---- helpers ----
 const toInt = (v) => (v === undefined ? undefined : Number(v));
 const inRange = (n, lo, hi) => Number.isInteger(n) && n >= lo && n <= hi;
-
-/**
- * Dashboard summary for a company (single year only)
- * GET /api/analytics/company/:companyId/summary?year=2025
- * GET /api/analytics/company/:companyId/summary?year=2025&mStart=3&mEnd=7
- * (single month => mStart=mEnd)
- */
 export const getCompanySummary = async (req, res) => {
   try {
     const { companyIds } = req.body;
@@ -29,12 +20,10 @@ export const getCompanySummary = async (req, res) => {
     const mEnd = toInt(req.query.mEnd);
 
     if (!inRange(year, 1970, 3000)) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Valid 'year' (e.g., 2025) is required",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Valid 'year' (e.g., 2025) is required",
+      });
     }
 
     // month validations (if provided)
@@ -42,41 +31,35 @@ export const getCompanySummary = async (req, res) => {
       (mStart !== undefined && !inRange(mStart, 1, 12)) ||
       (mEnd !== undefined && !inRange(mEnd, 1, 12))
     ) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "'mStart'/'mEnd' must be between 1 and 12",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "'mStart'/'mEnd' must be between 1 and 12",
+      });
     }
     if (mStart !== undefined && mEnd === undefined) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Provide both 'mStart' and 'mEnd' (or neither)",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Provide both 'mStart' and 'mEnd' (or neither)",
+      });
     }
     if (mEnd !== undefined && mStart === undefined) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Provide both 'mStart' and 'mEnd' (or neither)",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Provide both 'mStart' and 'mEnd' (or neither)",
+      });
     }
     if (mStart !== undefined && mEnd !== undefined && mStart > mEnd) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "'mStart' cannot be greater than 'mEnd'",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "'mStart' cannot be greater than 'mEnd'",
+      });
     }
 
     // Convert string IDs to ObjectId and use $in to match any of the company IDs
-    const companyObjectIds = companyIds.map(id => new mongoose.Types.ObjectId(id));
-    
+    const companyObjectIds = companyIds.map(
+      (id) => new mongoose.Types.ObjectId(id)
+    );
+
     const match = {
       company: { $in: companyObjectIds },
       originalIssueYear: year,
@@ -93,6 +76,7 @@ export const getCompanySummary = async (req, res) => {
           _id: null,
           policies: { $sum: 1 },
           premium: { $sum: "$netPremium" },
+          vli: { $sum: "$vliAmount" },
           commission: { $sum: "$commissionAmount" },
           reward: { $sum: "$rewardAmount" },
           profit: { $sum: "$totalProfit" },
@@ -120,4 +104,3 @@ export const getCompanySummary = async (req, res) => {
     return res.status(500).json({ success: false, message: err.message });
   }
 };
-

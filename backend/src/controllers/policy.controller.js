@@ -1,4 +1,3 @@
-// controllers/policy.controller.js
 import mongoose from "mongoose";
 import csvParser from "csv-parser";
 import { Readable } from "stream";
@@ -22,13 +21,7 @@ const parseDate = (val) => {
     return isNaN(d.getTime()) ? null : d;
   }
 
-  // Try MM/DD/YYYY
-  if (s.includes("/")) {
-    const d = new Date(s);
-    return isNaN(d.getTime()) ? null : d;
-  }
-
-  // Fallback ISO-like
+  // Otherwise let Date parse (covers MM/DD/YYYY and many others)
   const d = new Date(s);
   return isNaN(d.getTime()) ? null : d;
 };
@@ -38,6 +31,52 @@ const extractCompanyFromName = (originalName, marker = "business") => {
   const parts = s.split(marker);
   const raw = (parts[0] || s).replace(/\.[^.]+$/, "");
   return raw.replace(/[^a-z0-9]+/gi, "").trim();
+};
+
+// normalize CSV header -> lowercase, remove all whitespace
+const normalizeHeader = (h) => (h ?? "").toLowerCase().replace(/\s+/g, "");
+
+// header aliases -> canonical key used in code
+const headerAliases = {
+  // product
+  productname: "productname",
+  product: "productname",
+  productvariant: "productvariant",
+  variant: "productvariant",
+
+  // terms
+  premiumpayingterm: "premiumpayingterm",
+  ppt: "premiumpayingterm",
+  policyterm: "policyterm",
+  pt: "policyterm",
+
+  // policy number
+  policyno: "policyno",
+  policynumber: "policyno",
+  policynum: "policyno",
+  policyn: "policyno",
+  "policy#": "policyno",
+  policyno_: "policyno",
+  policy_no: "policyno",
+  policyid: "policyno",
+  "policy no": "policyno",
+
+  // dates
+  originalissuedate: "originalissuedate",
+  issuedate: "originalissuedate",
+  oid: "originalissuedate",
+
+  // amounts
+  netpremium: "netpremium",
+  premium: "netpremium",
+  "net premium": "netpremium",
+
+  sumassured: "sumassured",
+  sa: "sumassured",
+
+  // plan type column (Par / Npar / UL)
+  parnparul: "parnparul", // "Par Npar UL" -> "parnparul" after normalization
+  "par/npar/ul": "parnparul", // possible variant
 };
 
 /** -------- upload (append-only, dedupe) -------- */
@@ -54,12 +93,10 @@ export const uploadPolicies = async (req, res) => {
       "business"
     );
     if (!companyName) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Cannot derive company from filename",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Cannot derive company from filename",
+      });
     }
 
     const company = await Company.findOne({
@@ -80,7 +117,7 @@ export const uploadPolicies = async (req, res) => {
         .json({ success: false, message: "No master rules for this company" });
     }
 
-    // Parse CSV
+    // Parse CSV (buffer) with header normalization + trimming values
     const rows = [];
     const readable = new Readable();
     readable.push(req.file.buffer);
@@ -88,7 +125,16 @@ export const uploadPolicies = async (req, res) => {
 
     await new Promise((resolve, reject) => {
       readable
-        .pipe(csvParser())
+        .pipe(
+          csvParser({
+            mapHeaders: ({ header }) => {
+              const norm = normalizeHeader(header);
+              return headerAliases[norm] || norm;
+            },
+            mapValues: ({ value }) =>
+              typeof value === "string" ? value.trim() : value,
+          })
+        )
         .on("data", (r) => rows.push(r))
         .on("end", resolve)
         .on("error", reject);
@@ -102,17 +148,17 @@ export const uploadPolicies = async (req, res) => {
 
     const errors = [];
     const ops = [];
-    const newDocs = []; // keep actual docs for totals
+    const newDocs = []; // for totals
 
     for (const raw of rows) {
-      const productName = (raw["Product Name"] || "").trim();
-      const productVariant = (raw["Product Variant"] || "").trim();
+      const productName = (raw["productname"] || "").trim();
+      const productVariant = (raw["productvariant"] || "").trim();
 
-      const ppt = Number(raw["Premium Paying Term"] || 0);
-      const pt = Number(raw["Policy Term"] || 0);
+      const ppt = Number(raw["premiumpayingterm"] || 0);
+      const pt = Number(raw["policyterm"] || 0);
 
-      const policyNo = raw["Policy No"] ? String(raw["Policy No"]).trim() : "";
-      const oid = parseDate(raw["Original Issue Date"]);
+      const policyNo = raw["policyno"] ? String(raw["policyno"]).trim() : "";
+      const oid = parseDate(raw["originalissuedate"]);
       if (!policyNo || !oid) {
         errors.push({
           policyNo: policyNo || "(empty)",
@@ -121,6 +167,7 @@ export const uploadPolicies = async (req, res) => {
         continue;
       }
 
+      // Match against master row
       const master = masters.find((m) => {
         const nameOk =
           (m.productName || "").trim().toLowerCase() ===
@@ -143,16 +190,32 @@ export const uploadPolicies = async (req, res) => {
         continue;
       }
 
-      const netPremium = Number(raw["Net Premium"] || 0);
-      const sumAssured = Number(raw["Sum Assured"] || 0);
+      // Parse numeric fields
+      const netPremium = Number(raw["netpremium"] || 0);
+      const sumAssured = Number(raw["sumassured"] || 0);
 
+      // Plan type from CSV row, normalized
+      const planType = String(raw["parnparul"] || "")
+        .trim()
+        .toLowerCase(); // e.g., "par", "npar", "ul"
+
+      // Pcts from master (stored as percent values, e.g., 5 => 5%)
       const commissionPct = Number(master.commission || 0);
       const rewardPct = Number(master.reward || 0);
       const totalRatePct = Number(master.totalRate || 0);
 
+      // VLI: apply ONLY if planType !== 'ul'
+      const vliPctMaster = Number(master.vli || 0);
+      const applyVli = planType !== "ul";
+      const vliPct = applyVli ? vliPctMaster : 0;
+
+      // Amounts (as % of net premium)
       const commissionAmount = (netPremium * commissionPct) / 100;
       const rewardAmount = (netPremium * rewardPct) / 100;
-      const totalProfit = commissionAmount + rewardAmount;
+      const vliAmount = (netPremium * vliPct) / 100;
+
+      // Total revenue/profit includes VLI only when applied
+      const totalProfit = commissionAmount + rewardAmount + vliAmount;
 
       const year = oid.getUTCFullYear();
       const month = oid.getUTCMonth() + 1;
@@ -167,14 +230,23 @@ export const uploadPolicies = async (req, res) => {
         originalIssueDate: oid,
         originalIssueYear: year,
         originalIssueMonth: month,
+
         netPremium,
         sumAssured,
+
+        // percents
         commissionPct,
         rewardPct,
         totalRatePct,
+        vliPct, // applied pct (0 if UL)
+
+        // amounts
         commissionAmount,
         rewardAmount,
-        totalProfit,
+        vliAmount, // 0 if UL
+        totalProfit, // includes VLI when applicable
+
+        planType, // optional: store normalized plan type
         matchedMasterId: master._id,
       };
 
@@ -195,27 +267,36 @@ export const uploadPolicies = async (req, res) => {
 
       if (inserted > 0) {
         // recompute totals only for the inserted docs
-        const batchTotals = newDocs.slice(-inserted).reduce(
+        const batch = newDocs.slice(-inserted).reduce(
           (acc, p) => {
             acc.policies += 1;
             acc.premium += Number(p.netPremium || 0);
             acc.commission += Number(p.commissionAmount || 0);
             acc.reward += Number(p.rewardAmount || 0);
-            acc.profit += Number(p.totalProfit || 0);
+            acc.vli += Number(p.vliAmount || 0); // already 0 for UL
+            acc.profit += Number(p.totalProfit || 0); // includes VLI when applied
             return acc;
           },
-          { policies: 0, premium: 0, commission: 0, reward: 0, profit: 0 }
+          {
+            policies: 0,
+            premium: 0,
+            commission: 0,
+            reward: 0,
+            vli: 0,
+            profit: 0,
+          }
         );
 
         await Company.updateOne(
           { _id: company._id, createdBy: req.user._id },
           {
             $inc: {
-              "totals.policies": batchTotals.policies,
-              "totals.premium": batchTotals.premium,
-              "totals.commission": batchTotals.commission,
-              "totals.reward": batchTotals.reward,
-              "totals.profit": batchTotals.profit,
+              "totals.policies": batch.policies,
+              "totals.premium": batch.premium,
+              "totals.commission": batch.commission,
+              "totals.reward": batch.reward,
+              "totals.vli": batch.vli, // unaffected by UL rows
+              "totals.profit": batch.profit, // includes VLI where applicable
             },
             $set: { lastTotalsAt: new Date() },
           }
