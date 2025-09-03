@@ -238,7 +238,7 @@ export const uploadPolicies = async (req, res) => {
         commissionPct,
         rewardPct,
         totalRatePct,
-        vliPct, // applied pct (0 if UL)
+        vliPcnt: vliPct, // applied pct (0 if UL)
 
         // amounts
         commissionAmount,
@@ -275,6 +275,7 @@ export const uploadPolicies = async (req, res) => {
             acc.reward += Number(p.rewardAmount || 0);
             acc.vli += Number(p.vliAmount || 0); // already 0 for UL
             acc.profit += Number(p.totalProfit || 0); // includes VLI when applied
+
             return acc;
           },
           {
@@ -282,7 +283,6 @@ export const uploadPolicies = async (req, res) => {
             premium: 0,
             commission: 0,
             reward: 0,
-            vli: 0,
             profit: 0,
           }
         );
@@ -319,7 +319,6 @@ export const uploadPolicies = async (req, res) => {
   }
 };
 
-/** -------- list policies with filters -------- */
 export const getPolicies = async (req, res) => {
   try {
     const { companyIds } = req.body;

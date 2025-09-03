@@ -15,7 +15,15 @@ const extractCompanyFromName = (originalName, marker = "rate") => {
   const raw = (parts[0] || s).replace(/\.[^.]+$/, ""); // drop extension
   return raw.replace(/[^a-z0-9]+/g, "").trim() || "unknowncompany";
 };
+const pct = (v) => {
+  if (v == null) return 0;
+  const s = String(v).trim();
+  if (!s) return 0;
 
+  // Remove trailing "%" if present, then parse
+  const num = parseFloat(s.replace(/%$/, ""));
+  return isNaN(num) ? 0 : num;
+};
 // Accepts: "11+", "10-12", "10 - 12", "10", "5 to 12"
 const parsePPT = (raw) => {
   const s = String(raw ?? "").trim();
@@ -45,21 +53,6 @@ const parsePPT = (raw) => {
   // single number
   const n = parseInt(s, 10);
   return { min: isNaN(n) ? 0 : n, max: isNaN(n) ? 0 : n };
-};
-
-// Percent parser -> returns FRACTION in [0, 1].
-// "5%" -> 0.05; "5" -> 0.05; "0.05" -> 0.05; invalid -> 0
-const pct = (v) => {
-  if (v == null) return 0;
-  const s = String(v).trim();
-  if (!s) return 0;
-  if (/%$/.test(s)) {
-    const num = parseFloat(s.replace(/%$/, ""));
-    return isNaN(num) ? 0 : num / 100;
-  }
-  const num = parseFloat(s);
-  if (isNaN(num)) return 0;
-  return num > 1 ? num / 100 : num;
 };
 
 const normalizeHeader = (h) => (h ?? "").toLowerCase().replace(/\s+/g, "");
@@ -142,7 +135,7 @@ export const uploadMasterCSV = async (req, res) => {
               totalRate: pct(row["totalrate"]),
               commission: pct(row["commission"]),
               reward: pct(row["reward"]), // covers "Total Reward" via alias
-              vli: pct(row["vli"]), // e.g., "5%" -> 0.05
+              vli: pct(row["vli"]), // e.g., "5%" -> 5
             });
           } catch (err) {
             console.error("Row parse error:", err, { row });
