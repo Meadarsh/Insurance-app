@@ -313,17 +313,17 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
                 <TableCell sx={{width: '100px'}}>Total Profit (₹)</TableCell>
                 <TableCell sx={{width: '100px'}}>Total Rate %</TableCell>
                 <TableCell sx={{width: '100px'}}>Master Product</TableCell>
-                <TableCell sx={{width: '100px'}}>Actions</TableCell>
+               
               </TableRow>
             </TableHead>
             <TableBody>
               {policies.map((policy) => (
                 <TableRow key={policy._id}>
-                  <TableCell sx={{width: '100px'}}>{policy.policyNumber}</TableCell>
-                  <TableCell sx={{width: '100px'}}>{policy.policyName || 'N/A'}</TableCell>
-                  <TableCell sx={{width: '100px'}}>{policy.variant || 'N/A'}</TableCell>
+                  <TableCell sx={{width: '100px'}}>{policy.policyNo}</TableCell>
+                  <TableCell sx={{width: '100px'}}>{policy.productName || 'N/A'}</TableCell>
+                  <TableCell sx={{width: '100px'}}>{policy.productVariant || 'N/A'}</TableCell>
                   <TableCell sx={{width: '100px'}}>{policy.policyTerm || 'N/A'}</TableCell>
-                  <TableCell sx={{width: '100px'}}>{policy.ppt || 'N/A'}</TableCell>
+                  <TableCell sx={{width: '100px'}}>{policy.premiumPayingTerm || 'N/A'}</TableCell>
                   <TableCell sx={{width: '100px'}}>₹{policy.netPrice?.toLocaleString() || '0'}</TableCell>
                   <TableCell sx={{width: '100px'}}>₹{policy.rewardAmount?.toLocaleString() || '0'}</TableCell>
                   <TableCell sx={{width: '100px'}}>{policy.rewardPct || '0'}%</TableCell>
@@ -343,23 +343,7 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
                       <Chip label="No Master Link" size="small" color="warning" variant="outlined" />
                     )}
                   </TableCell>
-                  <TableCell>
-                    <Tooltip title="View Details">
-                      <IconButton size="small" color="info">
-                        <ViewIcon />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Edit Policy">
-                      <IconButton size="small" color="primary" onClick={() => handleEdit(policy)}>
-                        <EditIcon />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Delete Policy">
-                      <IconButton size="small" color="error" onClick={() => handleDelete(policy._id!)}>
-                        <DeleteIcon />
-                      </IconButton>
-                    </Tooltip>
-                  </TableCell>
+               
                 </TableRow>
               ))}
             </TableBody>
