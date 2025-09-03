@@ -263,7 +263,7 @@ labelId="year-select-label"
                 <Select
                 sx={{minWidth: 200}}
                   labelId="start-month-label"
-                  value={startDate ? startDate : ''}
+                  value={startDate}
                   label="Start Month"
                   onChange={handleStartMonthChange}
                 >
@@ -279,7 +279,7 @@ labelId="year-select-label"
                 <Select
                 sx={{minWidth: 200}}
                   labelId="end-month-label"
-                  value={endDate ? endDate : ''}
+                  value={endDate}
                   label="End Month"
                   onChange={handleEndMonthChange}
                 >

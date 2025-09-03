@@ -49,7 +49,7 @@ export function OverviewAnalyticsView() {
       companies,
     } = useFilter();
 
-  const fetchAnalyticsData = useCallback(async (isRefresh = false, companyIdsToFetch = selectedCompanyIds) => {
+  const fetchAnalyticsData = async (isRefresh = false, companyIdsToFetch = selectedCompanyIds) => {
     try {
       if (isRefresh) {
         setRefreshing(true);
@@ -78,7 +78,7 @@ export function OverviewAnalyticsView() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [isNavigating, selectedCompanyIds, startDate, endDate, year]);
+  }
 
   const handleRefresh = async () => {
     if (refreshing) return; // Prevent multiple simultaneous refreshes
@@ -97,7 +97,7 @@ export function OverviewAnalyticsView() {
   // Effect for initial load and when selectedCompanyIds changes
   useEffect(() => {
     fetchAnalyticsData(true,selectedCompanyIds);
-  }, [fetchAnalyticsData,selectedCompanyIds]);
+  }, []);
 
   // Set up real-time updates
   useEffect(() => {

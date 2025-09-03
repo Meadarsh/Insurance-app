@@ -90,7 +90,7 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
 
   useEffect(() => {
     fetchData();
-  }, [page, rowsPerPage, refreshTrigger,year,startDate,endDate,selectedCompanyIds]);
+  }, [page, rowsPerPage]);
 
   // Get master product name by ID
   const getMasterProductName = (masterRef: string) => {

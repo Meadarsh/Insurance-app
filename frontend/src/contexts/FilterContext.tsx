@@ -38,8 +38,8 @@ interface FilterProviderProps {
 export const FilterProvider: React.FC<FilterProviderProps> = ({
   children,
   initialYear = new Date().getFullYear(),
-  initialStartDate = new Date(new Date().getFullYear(), 0, 1).getMonth(), // Start of current year
-  initialEndDate = new Date().getMonth(), // Current date
+  initialStartDate =1, // Start of current year
+  initialEndDate =12, // Current date
   initialSelectedCompanyIds = [],
 }) => {
   const [year, setYear] = useState<number>(initialYear);
