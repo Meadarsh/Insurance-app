@@ -1,9 +1,6 @@
 import FileUpload from '../models/fileUpload.model.js';
 import fs from 'fs';
 
-// @desc    Upload a file
-// @route   POST /api/file-upload
-// @access  Private
 export const uploadFile = async (req, res, next) => {
   try {
     if (!req.file) {
@@ -38,9 +35,6 @@ export const uploadFile = async (req, res, next) => {
   }
 };
 
-// @desc    Get all file uploads
-// @route   GET /api/file-upload
-// @access  Private
 export const getFileUploads = async (req, res, next) => {
   try {
     const { page = 1, limit = 10, status } = req.query;
@@ -90,9 +84,6 @@ export const getFileUploadById = async (req, res, next) => {
   }
 };
 
-// @desc    Update file upload status
-// @route   PATCH /api/file-upload/:id/status
-// @access  Private
 export const updateFileUploadStatus = async (req, res, next) => {
   try {
     const { status, totalProcessedRecords, totalReconValue, outputReconValue, error } = req.body;

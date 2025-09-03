@@ -32,11 +32,13 @@ const policySchema = new mongoose.Schema(
     commissionPct: { type: Number, default: 0 },
     rewardPct: { type: Number, default: 0 },
     totalRatePct: { type: Number, default: 0 },
+    vliPcnt: { type: Number, default: 0 },
 
     // money derived from master * netPremium
     commissionAmount: { type: Number, default: 0 },
     rewardAmount: { type: Number, default: 0 },
     totalProfit: { type: Number, default: 0 },
+    vliAmount: { type: Number, default: 0 },
 
     matchedMasterId: { type: mongoose.Schema.Types.ObjectId, ref: "Master" },
   },

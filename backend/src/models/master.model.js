@@ -22,6 +22,7 @@ const masterSchema = new mongoose.Schema(
     totalRate: Number,
     commission: Number,
     reward: Number,
+    vli: Number,
   },
   { timestamps: true }
 );

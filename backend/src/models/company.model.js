@@ -8,6 +8,7 @@ const totalsSchema = new mongoose.Schema(
     commission: { type: Number, default: 0 },
     reward: { type: Number, default: 0 },
     profit: { type: Number, default: 0 }, // commission + reward
+    vli: { type: Number, default: 0 }, // sum of vli from masters
   },
   { _id: false }
 );

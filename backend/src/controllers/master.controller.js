@@ -7,13 +7,24 @@ import Master from "../models/master.model.js";
 import Policy from "../models/policy.model.js";
 import Company from "../models/company.model.js";
 
+/** -------- helpers -------- */
+
 const extractCompanyFromName = (originalName, marker = "rate") => {
   const s = String(originalName || "").toLowerCase();
   const parts = s.split(marker);
   const raw = (parts[0] || s).replace(/\.[^.]+$/, ""); // drop extension
   return raw.replace(/[^a-z0-9]+/g, "").trim() || "unknowncompany";
 };
+const pct = (v) => {
+  if (v == null) return 0;
+  const s = String(v).trim();
+  if (!s) return 0;
 
+  // Remove trailing "%" if present, then parse
+  const num = parseFloat(s.replace(/%$/, ""));
+  return isNaN(num) ? 0 : num;
+};
+// Accepts: "11+", "10-12", "10 - 12", "10", "5 to 12"
 const parsePPT = (raw) => {
   const s = String(raw ?? "").trim();
   if (!s) return { min: 0, max: 0 };
@@ -24,12 +35,19 @@ const parsePPT = (raw) => {
     return { min: isNaN(n) ? 0 : n, max: null };
   }
 
-  // range "10-12"
-  if (/^\d+\s*-\s*\d+$/.test(s)) {
-    const [a, b] = s.split("-").map((v) => parseInt(v, 10));
-    const min = isNaN(a) ? 0 : a;
-    const max = isNaN(b) ? min : b;
-    return { min, max };
+  // range "10-12" or "10 to 12"
+  const compact = s.replace(/\s+/g, "");
+  const hyphen = compact.match(/^(\d+)-(\d+)$/);
+  if (hyphen) {
+    const a = parseInt(hyphen[1], 10);
+    const b = parseInt(hyphen[2], 10);
+    return { min: Math.min(a, b), max: Math.max(a, b) };
+  }
+  const toMatch = s.match(/^(\d+)\s*to\s*(\d+)$/i);
+  if (toMatch) {
+    const a = parseInt(toMatch[1], 10);
+    const b = parseInt(toMatch[2], 10);
+    return { min: Math.min(a, b), max: Math.max(a, b) };
   }
 
   // single number
@@ -37,14 +55,30 @@ const parsePPT = (raw) => {
   return { min: isNaN(n) ? 0 : n, max: isNaN(n) ? 0 : n };
 };
 
-const pct = (v) =>
-  Number(
-    String(v ?? 0)
-      .toString()
-      .replace("%", "")
-  ) || 0;
+const normalizeHeader = (h) => (h ?? "").toLowerCase().replace(/\s+/g, "");
 
-// 📌 Upload & save Master CSV (supports PPT 11+ / ranges) with overwrite-on-upload
+// Map common variants to canonical keys used below
+const headerAliases = {
+  premiumpayingterm: "premiumpayingterm",
+  productname: "productname",
+  productvariant: "productvariant",
+  policyterm: "policyterm",
+  policynumber: "policynumber",
+  totalrate: "totalrate",
+  commission: "commission",
+  reward: "reward",
+  totalreward: "reward", // alias "Total Reward" → reward
+  vli: "vli",
+
+  // extra variants you might encounter
+  policyno: "policynumber",
+  policy_no: "policynumber",
+  product: "productname",
+};
+
+/** -------- controllers -------- */
+
+// 📌 Upload & save Master CSV (supports PPT open-ended/ranges). Overwrites previous company data.
 export const uploadMasterCSV = async (req, res) => {
   if (!req.file) {
     return res
@@ -74,26 +108,37 @@ export const uploadMasterCSV = async (req, res) => {
     // parse CSV -> results[]
     await new Promise((resolve, reject) => {
       fs.createReadStream(req.file.path)
-        .pipe(csv())
+        .pipe(
+          csv({
+            mapHeaders: ({ header }) => {
+              const norm = normalizeHeader(header);
+              return headerAliases[norm] || norm;
+            },
+            mapValues: ({ value }) =>
+              typeof value === "string" ? value.trim() : value,
+          })
+        )
         .on("data", (row) => {
           try {
             const { min: pptMin, max: pptMax } = parsePPT(
-              row["Premium Paying Term"]
+              row["premiumpayingterm"]
             );
+
             results.push({
               company: company._id,
-              productName: (row["Product Name"] || "").trim(),
-              productVariant: (row["Product Variant"] || "").trim(),
+              productName: row["productname"] || "",
+              productVariant: row["productvariant"] || "",
               premiumPayingTermMin: pptMin,
               premiumPayingTermMax: pptMax, // null = open-ended
-              policyTerm: Number(row["Policy Term"] || 0),
-              policyNumber: row["Policy Number"] || "",
-              totalRate: pct(row["Total Rate"]),
-              commission: pct(row["Commission"]),
-              reward: pct(row["Reward"]),
+              policyTerm: Number(row["policyterm"] || 0),
+              policyNumber: row["policynumber"] || "",
+              totalRate: pct(row["totalrate"]),
+              commission: pct(row["commission"]),
+              reward: pct(row["reward"]), // covers "Total Reward" via alias
+              vli: pct(row["vli"]), // e.g., "5%" -> 5
             });
           } catch (err) {
-            console.error("Row parse error:", err);
+            console.error("Row parse error:", err, { row });
           }
         })
         .on("end", resolve)
@@ -108,7 +153,6 @@ export const uploadMasterCSV = async (req, res) => {
 
     // ----- OVERWRITE-ON-UPLOAD -----
     if (USE_TX) {
-      // atomic (replica set / Atlas)
       const session = await mongoose.startSession();
       try {
         await session.withTransaction(async () => {
@@ -121,6 +165,7 @@ export const uploadMasterCSV = async (req, res) => {
                 "totals.policies": 0,
                 "totals.premium": 0,
                 "totals.commission": 0,
+                "totals.vli": 0,
                 "totals.reward": 0,
                 "totals.profit": 0,
                 lastTotalsAt: new Date(),
@@ -134,7 +179,6 @@ export const uploadMasterCSV = async (req, res) => {
         await session.endSession();
       }
     } else {
-      // sequential (local dev without replica set)
       await Master.deleteMany({ company: company._id });
       await Policy.deleteMany({ company: company._id });
       await Company.updateOne(
@@ -144,6 +188,7 @@ export const uploadMasterCSV = async (req, res) => {
             "totals.policies": 0,
             "totals.premium": 0,
             "totals.commission": 0,
+            "totals.vli": 0,
             "totals.reward": 0,
             "totals.profit": 0,
             lastTotalsAt: new Date(),
@@ -173,26 +218,24 @@ export const uploadMasterCSV = async (req, res) => {
   }
 };
 
+// 📌 List masters (with pagination). Optional filters: ?company=<id>&createdBy=<userId>
 export const getCompanyMasters = async (req, res) => {
   try {
-    // Pagination parameters
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 10;
     const skip = (page - 1) * limit;
 
-    // Get total count for pagination info
-    const total = await Master.countDocuments();
-    
-    // Get paginated results
-    const masters = await Master.find()
+    const filter = {};
+    if (req.query.company) filter.company = req.query.company;
+    if (req.query.createdBy) filter.createdBy = req.query.createdBy;
+
+    const total = await Master.countDocuments(filter);
+    const masters = await Master.find(filter)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
-    // Calculate pagination metadata
     const totalPages = Math.ceil(total / limit);
-    const hasNextPage = page < totalPages;
-    const hasPreviousPage = page > 1;
 
     return res.json({
       success: true,
@@ -202,8 +245,8 @@ export const getCompanyMasters = async (req, res) => {
         totalPages,
         currentPage: page,
         limit,
-        hasNextPage,
-        hasPreviousPage,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
       },
     });
   } catch (error) {

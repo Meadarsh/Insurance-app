@@ -24,7 +24,6 @@ const upload = multer({
 router.post("/upload", protect, upload.single("file"), uploadPolicies);
 router.post("/get", protect, getPolicies);
 
-// Optional: Multer error handler for neat 400s instead of 500s
 router.use((err, req, res, next) => {
   if (err instanceof multer.MulterError || err.message?.includes("CSV")) {
     return res.status(400).json({ success: false, message: err.message });
