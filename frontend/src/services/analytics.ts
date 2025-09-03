@@ -65,10 +65,6 @@ export const analyticsAPI = {
   // Get dashboard analytics with caching
   async getDashboardAnalytics(companyId?: string[], year?: number, mStart?: number, mEnd?: number): Promise<AnalyticsData> {
     // Return cached data if valid
-    console.log("companyId",companyId);
-    console.log("year",year);
-    console.log("mStart",mStart);
-    console.log("mEnd",mEnd);
     if (isCacheValid()) {
       return analyticsCache!;
     }

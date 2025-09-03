@@ -1,7 +1,6 @@
 import express from "express";
 import {
   getCompanySummary,
-  getMonthlyBreakdown,
 } from "../controllers/analytics.controller.js";
 import protect from "../middleware/auth.js";
 
@@ -13,6 +12,5 @@ const router = express.Router();
 router.post("/company", protect, getCompanySummary);
 
 // Get policies for a specific company
-router.get("/company/:companyId/policies", protect, getMonthlyBreakdown);
 
 export default router;

@@ -241,7 +241,7 @@ export const uploadPolicies = async (req, res) => {
 /** -------- list policies with filters -------- */
 export const getPolicies = async (req, res) => {
   try {
-    const { companyId } = req.params;
+    const { companyIds } = req.body;
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit) || 20, 1), 200);
     const skip = (page - 1) * limit;
@@ -250,7 +250,7 @@ export const getPolicies = async (req, res) => {
     const mStart = req.query.mStart ? Number(req.query.mStart) : undefined;
     const mEnd = req.query.mEnd ? Number(req.query.mEnd) : undefined;
 
-    const match = { company: new mongoose.Types.ObjectId(companyId) };
+    const match = { company: { $in: companyIds } };
     if (year && mStart && mEnd) {
       match.originalIssueYear = year;
       match.originalIssueMonth = { $gte: mStart, $lte: mEnd };

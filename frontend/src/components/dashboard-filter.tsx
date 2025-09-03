@@ -41,8 +41,7 @@ const DashboardFilter: React.FC<DashboardFilterProps> = ({
     companiesError,
     deleteCompany
   } = useFilter();
-console.log(endDate);
-console.log(startDate);
+
 
   // Notify parent when loading state changes
   useEffect(() => {

@@ -81,9 +81,8 @@ export interface PolicyResponse {
 
 export const policyAPI = {
   // Get all policies with pagination (READ - no auth required)
-  getPolicies: async (companyIds: string[],page: number = 1, limit: number = 10): Promise<PoliciesResponse> => {
-    console.log("companyIds",companyIds);
-    const response = await ApiInstance.post(`/policies/get?page=${page}&limit=${limit}`,{
+  getPolicies: async (companyIds: string[],page: number = 1, limit: number = 10,year?: number,mStart?: number,mEnd?: number): Promise<PoliciesResponse> => {
+    const response = await ApiInstance.post(`/policies/get?page=${page}&limit=${limit}&year=${year}&mStart=${mStart}&mEnd=${mEnd}`,{
       companyIds
     });
     return response.data;

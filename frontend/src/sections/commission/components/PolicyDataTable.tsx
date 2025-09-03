@@ -22,10 +22,6 @@ import {
   Chip,
   Tooltip,
   CircularProgress,
-  Select,
-  MenuItem,
-  Autocomplete,
-  DialogContentText,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -35,8 +31,9 @@ import {
   Download,
   Done,
 } from '@mui/icons-material';
-import { commissionPolicyAPI, policyAPI, PolicyData } from '../../../services/policy';
-import { CompanyApi } from 'src/services/company';
+import { policyAPI, PolicyData } from '../../../services/policy';
+import DashboardFilter from 'src/components/dashboard-filter';
+import { useFilter } from 'src/contexts/FilterContext';
 
 interface Company {
   _id: string;
@@ -51,14 +48,13 @@ interface PolicyDataTableProps {
 export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableProps) {
   const [policies, setPolicies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [selectedPolicy, setSelectedPolicy] = useState<PolicyData | null>(null);
   const [editingPolicy, setEditingPolicy] = useState<Partial<PolicyData>>({});
-  const [company, setCompany] = useState<string[]>([]);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>({
     open: false,
     message: '',
@@ -70,68 +66,14 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
     message: '',
     severity: 'info',
   });
-  
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedCompanyForDelete, setSelectedCompanyForDelete] = useState<Company | null>(null);
-
-   const [companies, setCompanies] = useState<Company[]>([]);
-    useEffect(() => {
-      CompanyApi.getCompanies().then((res) => {
-        setCompanies(res.data);
-        setCompany([res.data[0]._id]);
-      });
-    }, []);
-  
-    const handleChangeCompany = (companyData: string[]) => {
-      setCompany(companyData);
-    };
-
-    const handleDeleteCompany = async () => {
-      if (!selectedCompanyForDelete) return;
-      
-      try {
-        setLoading(true);
-        await CompanyApi.deleteCompany(selectedCompanyForDelete._id);
-        
-        // Update the companies list
-        const updatedCompanies = companies.filter(c => c._id !== selectedCompanyForDelete._id);
-        setCompanies(updatedCompanies);
-        
-        // Reset selection if the deleted company was selected
-        if (company.includes(selectedCompanyForDelete._id)) {
-          setCompany([]);
-          setPolicies([]);
-          setTotalCount(0);
-        }
-        
-        setNotification({
-          open: true,
-          message: `${selectedCompanyForDelete.name} has been deleted successfully`,
-          severity: 'success'
-        });
-        
-      } catch (error) {
-        console.error('Error deleting company:', error);
-        setNotification({
-          open: true,
-          message: 'Failed to delete company. Please try again.',
-          severity: 'error'
-        });
-      } finally {
-        setLoading(false);
-        setDeleteDialogOpen(false);
-        setSelectedCompanyForDelete(null);
-      }
-    };
+ 
+  const {selectedCompanyIds,year,startDate,endDate} = useFilter();
 
   // Fetch policies and masters
   const fetchData = async () => {
     try {
-      if(!company){
-        return;
-      }
       setLoading(true);
-      const policiesResponse = await policyAPI.getPolicies(company,page,rowsPerPage);
+      const policiesResponse = await policyAPI.getPolicies(selectedCompanyIds,page,rowsPerPage,year,startDate,endDate);
       setPolicies(policiesResponse.data);
       setTotalCount(policiesResponse.pagination.total);
     } catch (error) {
@@ -148,7 +90,7 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
 
   useEffect(() => {
     fetchData();
-  }, [page, rowsPerPage, refreshTrigger, company]);
+  }, [page, rowsPerPage, refreshTrigger,year,startDate,endDate,selectedCompanyIds]);
 
   // Get master product name by ID
   const getMasterProductName = (masterRef: string) => {
@@ -306,10 +248,6 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
     setSelectedPolicy(null);
   };
 
-  // Handle notification close
-  const handleCloseNotification = () => {
-    setNotification(prev => ({ ...prev, open: false }));
-  };
 
   // Handle pagination
   const handleChangePage = (event: unknown, newPage: number) => {
@@ -330,83 +268,10 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
   }
   return (
     <Box>
-      {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={() => setDeleteDialogOpen(false)}
-        aria-labelledby="alert-dialog-title"
-        aria-describedby="alert-dialog-description"
-      >
-        <DialogTitle id="alert-dialog-title">
-          Delete Company
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText id="alert-dialog-description">
-            Are you sure you want to delete &quot;{selectedCompanyForDelete?.name}&quot;? This action cannot be undone.
-            <br /><br />
-            <strong>Warning:</strong> This will also delete all associated data including policies and master records.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button 
-            onClick={() => setDeleteDialogOpen(false)}
-            disabled={loading}
-          >
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleDeleteCompany} 
-            color="error" 
-            disabled={loading}
-            startIcon={loading ? <CircularProgress size={20} /> : null}
-          >
-            {loading ? 'Deleting...' : 'Delete'}
-          </Button>
-        </DialogActions>
-      </Dialog>
       {/* Header */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <div className='flex gap-2 items-center'>
         <Typography variant="h6">Policy Data Management</Typography>
-        <Autocomplete
-                multiple
-                options={companies}
-                getOptionLabel={(option) => option.name}
-                value={companies.filter(c => company.includes(c._id))}
-                onChange={(_, newValue) => {
-                  if (Array.isArray(newValue)) {
-                    handleChangeCompany(newValue.map(c => c._id));
-                  }
-                }}
-                sx={{ width: 300, mt: 1, '& .MuiInputBase-root': { minHeight: '40px' } }}
-
-                renderOption={(props, option) => (
-                  <li {...props} style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                    <span>{option.name}</span>
-                    <IconButton
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedCompanyForDelete(option);
-                        setDeleteDialogOpen(true);
-                      }}
-                      color="error"
-                      sx={{ '&:hover': { backgroundColor: 'rgba(244, 67, 54, 0.08)' } }}
-                      title="Delete Company"
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </li>
-                )}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Select Company"
-                    size="small"
-                    variant="outlined"
-                  />
-                )}
-              />
         </div>
        <div className='flex gap-2 items-center'>
        <Button
@@ -424,6 +289,9 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
           Download
         </Button>
        </div>
+      </Box>
+      <Box sx={{my:2}}>
+      <DashboardFilter handleApplyFilters={fetchData}/>
       </Box>
 
       {/* Table */}
