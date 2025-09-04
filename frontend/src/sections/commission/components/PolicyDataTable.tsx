@@ -141,6 +141,8 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
       'Reward %',
       'Commission (₹)',
       'Commission %',
+      'VLI (₹)',
+      'VLI %',
       'Total Profit (₹)',
       'Total Rate %',
       'Created At'
@@ -162,6 +164,8 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
         policy.rewardPct?.toString() || '0',
         policy.commissionAmount?.toString() || '0',
         policy.commissionPct?.toString() || '0',
+        policy.vliAmount?.toString() || '0',
+        policy.vliPcnt?.toString() || '0',
         policy.totalProfitAmount?.toString() || '0',
         policy.totalRatePct?.toString() || '0',
         `"${new Date(policy.createdAt).toLocaleDateString()}"`
@@ -181,28 +185,6 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!id) return;
-    
-    if (window.confirm('Are you sure you want to delete this policy?')) {
-      try {
-        await policyAPI.deletePolicy(id);
-        setNotification({
-          open: true,
-          message: 'Policy deleted successfully!',
-          severity: 'success'
-        });
-        fetchData();
-      } catch (error) {
-        setNotification({
-          open: true,
-          message: 'Failed to delete policy. Please try again.',
-          severity: 'error'
-        });
-      }
-    }
   };
 
   // Handle save (edit or add)
@@ -310,6 +292,8 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
                 <TableCell sx={{width: '100px'}}>Reward %</TableCell>
                 <TableCell sx={{width: '100px'}}>Commission (₹)</TableCell>
                 <TableCell sx={{width: '100px'}}>Commission %</TableCell>
+                <TableCell sx={{width: '100px'}}>VLI (₹)</TableCell>
+                <TableCell sx={{width: '100px'}}>VLI %</TableCell>
                 <TableCell sx={{width: '100px'}}>Total Profit (₹)</TableCell>
                 <TableCell sx={{width: '100px'}}>Total Rate %</TableCell>
                 <TableCell sx={{width: '100px'}}>Master Product</TableCell>
@@ -329,6 +313,8 @@ export default function PolicyDataTable({ refreshTrigger = 0 }: PolicyDataTableP
                   <TableCell sx={{width: '100px'}}>{policy.rewardPct || '0'}%</TableCell>
                   <TableCell sx={{width: '100px'}}>₹{policy.commissionAmount?.toLocaleString() || '0'}</TableCell>
                   <TableCell sx={{width: '100px'}}>{policy.commissionPct || '0'}%</TableCell>
+                  <TableCell sx={{width: '100px'}}>₹{policy.vliAmount?.toLocaleString() || '0'}</TableCell>
+                  <TableCell sx={{width: '100px'}}>{policy.vliPcnt || '0'}%</TableCell>
                   <TableCell sx={{width: '100px'}}>₹{policy.totalProfit?.toLocaleString() || '0'}</TableCell>
                   <TableCell sx={{width: '100px'}}>{policy.totalRatePct || '0'}%</TableCell>
                   <TableCell>

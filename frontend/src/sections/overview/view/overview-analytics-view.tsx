@@ -221,8 +221,8 @@ export function OverviewAnalyticsView() {
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
          {analyticsData.totals?.policies>0 && <AnalyticsWidgetSummary
-            title="Additional Reward"
-            total={analyticsData.totals?.policies || 0}
+            title="VLI"
+            total={analyticsData.totals?.vli || 0}
             color="error"
             icon={<img alt="Messages" src="/assets/icons/glass/ic-glass-message.svg" />}
             chart={analyticsData.stats?.messages?.chart || { categories: [], series: [] }}
