@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { tokenManager } from '../services/auth';
 import ApiInstance from '../services/api.instance';
+import { redirect } from 'react-router-dom';
 
 export interface User {
   _id: string;
@@ -68,6 +69,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = useCallback(async () => {
     try {
       tokenManager.clearTokens();
+      redirect('/auth/sign-in');
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
