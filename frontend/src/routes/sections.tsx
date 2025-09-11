@@ -9,6 +9,10 @@ import LinearProgress, { linearProgressClasses } from '@mui/material/LinearProgr
 
 import { AuthLayout } from 'src/layouts/auth';
 import { DashboardLayout } from 'src/layouts/dashboard';
+import { FilterProvider } from 'src/contexts/FilterContext';
+import ProtectedRoute from 'src/components/protected-route';
+import SubscriptionProtection from 'src/components/SubscriptionProtection';
+import PricingPage from 'src/pages/pricing';
 
 // ----------------------------------------------------------------------
 
@@ -24,6 +28,7 @@ export const RewardsPage = lazy(() => import('src/pages/rewards'));
 export const CommissionPage = lazy(() => import('src/pages/commission'));
 export const ContestPage = lazy(() => import('src/pages/contest'));
 export const Page404 = lazy(() => import('src/pages/page-not-found'));
+export const PaymentSuccessPage = lazy(() => import('src/pages/payment-success/PaymentSuccess'));
 
 const renderFallback = () => (
   <Box
@@ -48,11 +53,17 @@ const renderFallback = () => (
 export const routesSection: RouteObject[] = [
   {
     element: (
-      <DashboardLayout>
-        <Suspense fallback={renderFallback()}>
-          <Outlet />
-        </Suspense>
-      </DashboardLayout>
+            <ProtectedRoute>
+      <FilterProvider>
+      <SubscriptionProtection>
+        <DashboardLayout>
+          <Suspense fallback={renderFallback()}>
+              <Outlet />
+          </Suspense>
+        </DashboardLayout>
+        </SubscriptionProtection>
+      </FilterProvider>
+            </ProtectedRoute>
     ),
     children: [
       { index: true, element: <DashboardPage /> },
@@ -86,6 +97,16 @@ export const routesSection: RouteObject[] = [
       <AuthLayout>
         <OtpVerificationPage />
       </AuthLayout>
+    ),
+  },
+  {
+    path: '/pricing',
+    element: <PricingPage />,
+  },
+  {
+    path: '/payment/success',
+    element: (
+        <PaymentSuccessPage />
     ),
   },
   {

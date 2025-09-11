@@ -24,6 +24,7 @@ import CommissionTable from '../components/CommissionTable';
 import ReconciliationSummary from '../components/ReconciliationSummary';
 import MasterDataTable from '../components/MasterDataTable';
 import UploadPolicyFileDialog from '../components/UploadPolicyFileDialog';
+import PremiumGuard from 'src/components/PremiumGuard';
 
 
 interface ReconciliationRecord {
@@ -171,6 +172,7 @@ export default function CommissionView() {
             {isUploading ? 'Uploading...' : 'Upload File (Master)'}
           </Button>
           
+          <PremiumGuard>
           <Button
             variant="contained"
             startIcon={<CloudUpload />}
@@ -180,7 +182,7 @@ export default function CommissionView() {
           >
             {isUploading ? 'Uploading...' : 'Upload File (Policy)'}
           </Button>
-          
+          </PremiumGuard>          
           <Button
             variant="outlined"
             startIcon={<Description />}

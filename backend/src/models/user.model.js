@@ -21,6 +21,10 @@ const userSchema = mongoose.Schema(
       trim: true,
       minlength: 8,
     },
+    subscriptionEnd: {
+      type: Date,
+      default: null,
+    },
     role: {
       type: String,
       enum: ['admin', 'vendor', 'executor'],

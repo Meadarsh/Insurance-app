@@ -2,6 +2,7 @@ import express from 'express';
 import { body } from 'express-validator';
 import validate from '../middleware/validate.js';
 import authController from '../controllers/auth.controller.js';
+import protect from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -41,7 +42,14 @@ router.post(
     body('refreshToken').notEmpty().withMessage('Refresh token is required'),
   ],
   validate,
- authController.refreshAuth
+  authController.refreshAuth
 );
+
+router.get(
+  '/me',
+  protect, 
+  authController.getCurrentUser
+);
+
 
 export default router;

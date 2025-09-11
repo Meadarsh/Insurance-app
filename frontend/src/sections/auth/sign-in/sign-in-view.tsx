@@ -10,10 +10,8 @@ import Typography from '@mui/material/Typography';
 import InputAdornment from '@mui/material/InputAdornment';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
-
 import { useRouter } from 'src/routes/hooks';
-import { authAPI } from 'src/services/auth';
-
+import { useAuth } from 'src/contexts/AuthContext';
 import { Iconify } from 'src/components/iconify';
 
 // ----------------------------------------------------------------------
@@ -30,7 +28,6 @@ interface FormErrors {
 
 export function SignInView() {
   const router = useRouter();
-
   const [formData, setFormData] = useState<FormData>({
     email: '',
     password: '',
@@ -69,6 +66,10 @@ export function SignInView() {
     setApiError('');
   };
 
+  const { login,isAuthenticated } = useAuth();
+ if(isAuthenticated){
+    router.push('/');
+ }
   const handleSignIn = useCallback(async () => {
     if (!validateForm()) {
       return;
@@ -78,26 +79,20 @@ export function SignInView() {
     setApiError('');
 
     try {
-      const response = await authAPI.login({
-        email: formData.email,
-        password: formData.password,
-      }) as any; // Type assertion for now
-
-      // Store tokens in localStorage (you might want to use a more secure method)
-      if (response.tokens) {
-        localStorage.setItem('accessToken', response.tokens.accessToken);
-        localStorage.setItem('refreshToken', response.tokens.refreshToken);
-        localStorage.setItem('user', JSON.stringify(response.user));
+      const result = await login(formData.email, formData.password);
+      
+      if (result.success) {
+        // Redirect to dashboard on successful login
+        router.push('/');
+      } else {
+        setApiError(result.message || 'Failed to sign in');
       }
-
-      // Redirect to dashboard
-      router.push('/');
     } catch (error: any) {
-      setApiError(error.message || 'Failed to sign in');
+      setApiError(error.message || 'An unexpected error occurred');
     } finally {
       setLoading(false);
     }
-  }, [formData, router]);
+  }, [formData, login, router]);
 
   const renderForm = (
     <Box

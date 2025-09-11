@@ -127,4 +127,35 @@ const refreshAuth = async (req, res, next) => {
   }
 };
 
-export default { register, login, refreshAuth };
+const getCurrentUser = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(httpStatus.NOT_FOUND).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    const companies = await fetchCompaniesFor(user._id);
+    
+    res.status(httpStatus.OK).json({
+      success: true,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isVerified: user.isVerified,
+        isActive: user.isActive,
+        subscriptionEnd: user.subscriptionEnd,
+      },
+      companies,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+export default { register, login, refreshAuth, getCurrentUser };

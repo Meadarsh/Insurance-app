@@ -16,6 +16,7 @@ import masterRoutes from "./src/routes/master.routes.js";
 import analyticsRoutes from "./src/routes/analytics.js";
 import userRoutes from "./src/routes/user.routes.js";
 import companyRoutes from "./src/routes/company.route.js";
+import paymentRoutes from "./src/routes/payment.routes.js";
 
 // Create uploads directory if it doesn't exist
 const __filename = fileURLToPath(import.meta.url);
@@ -64,6 +65,7 @@ app.use("/api/masters", masterRoutes); //
 app.use("/api/analytics", analyticsRoutes); // updated alrdy
 app.use("/api/users", userRoutes);
 app.use("/api/companies", companyRoutes);
+app.use("/api/payments", paymentRoutes);
 
 // Serve uploaded files
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));

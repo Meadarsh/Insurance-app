@@ -1,20 +1,32 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { tokenManager } from '../services/auth';
+import ApiInstance from '../services/api.instance';
 
-interface User {
+export interface User {
   _id: string;
   name: string;
   email: string;
   role: string;
+  isActive: boolean;
+  isVerified: boolean;
+  subscriptionEnd: string | null;
+}
+
+export interface SubscriptionStatus {
+  hasActiveSubscription: boolean;
+  isSubscriptionExpired: boolean;
+  daysUntilExpiry: number | null;
 }
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (user: User, accessToken: string, refreshToken: string) => void;
-  logout: () => void;
-  checkAuth: () => boolean;
+  subscriptionStatus: SubscriptionStatus;
+  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  logout: () => Promise<void>;
+  checkAuth: () => Promise<boolean>;
+  checkSubscriptionStatus: () => SubscriptionStatus;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,62 +46,188 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus>({
+    hasActiveSubscription: false,
+    isSubscriptionExpired: true,
+    daysUntilExpiry: null,
+  });
 
-  const checkAuth = (): boolean => {
-    const token = tokenManager.getAccessToken();
-    if (!token) {
-      return false;
+  const fetchUser = useCallback(async (): Promise<User | null> => {
+    try {
+      const response = await ApiInstance.get('/auth/me');
+      if (response.data?.success) {
+        return response.data.user;
+      }
+      return null;
+    } catch (error) {
+      console.error('Failed to fetch user:', error);
+      return null;
+    }
+  }, []);
+
+  const logout = useCallback(async () => {
+    try {
+      tokenManager.clearTokens();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setUser(null);
+      setIsLoading(false);
+      tokenManager.clearTokens();
+    }
+  }, []);
+
+  const checkSubscriptionStatus = useCallback((): SubscriptionStatus => {
+    if (!user || !user.subscriptionEnd) {
+      return {
+        hasActiveSubscription: false,
+        isSubscriptionExpired: true,
+        daysUntilExpiry: null,
+      };
     }
 
-    if (tokenManager.isTokenExpired(token)) {
-      // Token is expired, try to refresh
-      const refreshToken = tokenManager.getRefreshToken();
-      if (refreshToken && !tokenManager.isTokenExpired(refreshToken)) {
-        // TODO: Implement token refresh logic
-        return false;
-      } else {
-        // Both tokens are expired, logout
-        logout();
+    const now = new Date();
+    const subscriptionEnd = new Date(user.subscriptionEnd);
+    const timeDiff = subscriptionEnd.getTime() - now.getTime();
+    const daysUntilExpiry = Math.ceil(timeDiff / (1000 * 3600 * 24));
+    const isExpired = subscriptionEnd < now;
+
+    return {
+      hasActiveSubscription: !isExpired,
+      isSubscriptionExpired: isExpired,
+      daysUntilExpiry: isExpired ? 0 : daysUntilExpiry,
+    };
+  }, [user]);
+
+  const checkAuth = useCallback(async (): Promise<boolean> => {
+    try {
+      const token = tokenManager.getAccessToken();
+      if (!token) {
         return false;
       }
+
+      // Check if token is expired
+      if (tokenManager.isTokenExpired(token)) {
+        const refreshToken = tokenManager.getRefreshToken();
+        
+        // If we have a valid refresh token, try to refresh
+        if (refreshToken && !tokenManager.isTokenExpired(refreshToken)) {
+          try {
+            const response = await ApiInstance.post('/auth/refresh-token', { refreshToken });
+            if (response.data?.success) {
+              const { accessToken, refreshToken: newRefreshToken } = response.data.tokens || {};
+              if (accessToken && newRefreshToken) {
+                tokenManager.setTokens(accessToken, newRefreshToken);
+                const userData = await fetchUser();
+                if (userData) {
+                  setUser(userData);
+                  return true;
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Token refresh failed:', error);
+            // If refresh fails, clear tokens and user
+            tokenManager.clearTokens();
+            setUser(null);
+            return false;
+          }
+        }
+        // If we get here, refresh failed or tokens are invalid
+        tokenManager.clearTokens();
+        setUser(null);
+        return false;
+      }
+
+      // Token is valid, fetch user data if not already loaded
+      if (!user) {
+        const userData = await fetchUser();
+        if (userData) {
+          setUser(userData);
+          return true;
+        }
+        return false;
+      }
+      
+      return true; // User is already loaded and token is valid
+    } catch (error) {
+      console.error('Auth check failed:', error);
+      tokenManager.clearTokens();
+      setUser(null);
+      return false;
     }
+  }, [user, fetchUser]);
 
-    return true;
-  };
-
-  const login = (userData: User, accessToken: string, refreshToken: string) => {
-    tokenManager.setTokens(accessToken, refreshToken);
-    setUser(userData);
-  };
-
-  const logout = () => {
-    tokenManager.clearTokens();
-    setUser(null);
-  };
+  const login = useCallback(async (email: string, password: string) => {
+    try {
+      setIsLoading(true);
+      const response = await ApiInstance.post('/auth/login', { email, password });
+      
+      if (response.data?.success) {
+        // Check both response structures
+        const userData = response.data.user || response.data.data?.user;
+        const tokens = response.data.tokens || response.data.data?.tokens;
+        
+        if (userData && tokens?.accessToken) {
+          tokenManager.setTokens(tokens.accessToken, tokens.refreshToken);
+          setUser(userData);
+          return { success: true };
+        }
+      }
+      
+      return { 
+        success: false, 
+        message: response.data?.message || 'Invalid response from server' 
+      };
+    } catch (error: any) {
+      console.error('Login error:', error);
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'An error occurred during login' 
+      };
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    // Check authentication status on mount
-    const isAuth = checkAuth();
-    if (isAuth) {
-      // TODO: Fetch user data from token or API
-      // For now, we'll just set a basic user object
-      setUser({
-        _id: 'temp-user-id',
-        name: 'User',
-        email: 'user@example.com',
-        role: 'user'
-      });
+    let isMounted = true;
+    
+    const verifyAuth = async () => {
+      try {
+        await checkAuth();
+      } catch (error) {
+        console.error('Auth verification error:', error);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    verifyAuth();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [checkAuth]);
+
+  // Update subscription status when user changes
+  useEffect(() => {
+    if (user) {
+      setSubscriptionStatus(checkSubscriptionStatus());
     }
-    setIsLoading(false);
-  }, []);
+  }, [user, checkSubscriptionStatus]);
 
   const value: AuthContextType = {
     user,
     isAuthenticated: !!user,
     isLoading,
+    subscriptionStatus,
     login,
     logout,
     checkAuth,
+    checkSubscriptionStatus,
   };
 
   return (

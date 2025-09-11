@@ -15,6 +15,7 @@ import { useRouter } from 'src/routes/hooks';
 import { authAPI } from 'src/services/auth';
 
 import { Iconify } from 'src/components/iconify';
+import { useAuth } from 'src/contexts/AuthContext';
 
 // ----------------------------------------------------------------------
 
@@ -124,6 +125,11 @@ export function SignUpView() {
       [field]: !prev[field],
     }));
   };
+
+   const {isAuthenticated } = useAuth();
+   if(isAuthenticated){
+      router.push('/');
+   }
 
   const renderForm = (
     <Box
