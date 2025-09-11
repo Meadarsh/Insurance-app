@@ -55,13 +55,11 @@ export const routesSection: RouteObject[] = [
     element: (
             <ProtectedRoute>
       <FilterProvider>
-      <SubscriptionProtection>
         <DashboardLayout>
           <Suspense fallback={renderFallback()}>
               <Outlet />
           </Suspense>
         </DashboardLayout>
-        </SubscriptionProtection>
       </FilterProvider>
             </ProtectedRoute>
     ),

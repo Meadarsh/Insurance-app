@@ -1,4 +1,5 @@
-import { Tooltip, IconButton, Box, BoxProps } from '@mui/material';
+import { useState } from 'react';
+import { Tooltip, IconButton, Box, BoxProps, Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from 'src/contexts/AuthContext';
 import { LuCrown } from 'react-icons/lu';
@@ -15,40 +16,67 @@ export default function PremiumGuard({
 }: PremiumGuardProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
 
   // Check if subscription has ended
-  const isSubscriptionActive = false;
-  // user?.subscriptionEnd && new Date(user.subscriptionEnd) > new Date();
+  const isSubscriptionActive = user?.subscriptionEnd && new Date(user.subscriptionEnd) > new Date();
 
   if (isSubscriptionActive) {
     return <Box {...other}>{children}</Box>;
   }
 
-  const handleUpgradeClick = () => {
+  const handleOpen = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpen(true);
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+  };
+
+  const handleUpgrade = () => {
     navigate('/pricing');
   };
 
   return (
-    <Box
-      onClick={handleUpgradeClick}
-      sx={{ cursor: 'pointer', position: 'relative', display: 'inline-flex' }}
-      {...other}
-    >
-      <Tooltip title={tooltip}>
-        <IconButton
-          sx={{
-            position: 'absolute',
-            top: -8,
-            right: -8,
-            zIndex: 1,
-            p: 0.5,
-            bgcolor: 'white',
-          }}
-        >
-          <LuCrown width={16} color="orange" />
-        </IconButton>
-      </Tooltip>
-      <div style={{ pointerEvents: 'none' }}> {children}</div>
-    </Box>
+    <>
+      <Box
+        onClick={handleOpen}
+        sx={{ cursor: 'pointer', position: 'relative', display: 'inline-flex' }}
+        {...other}
+      >
+        <Tooltip title={tooltip}>
+          <IconButton
+            sx={{
+              position: 'absolute',
+              top: -8,
+              right: -8,
+              zIndex: 1,
+              p: 0.5,
+              bgcolor: 'white',
+              '&:hover': {
+                bgcolor: 'grey.100',
+              },
+            }}
+          >
+            <LuCrown size={16} color="orange" />
+          </IconButton>
+        </Tooltip>
+        <div style={{ pointerEvents: 'none' }}>{children}</div>
+      </Box>
+
+      <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
+        <DialogTitle>Upgrade to Premium</DialogTitle>
+        <DialogContent>
+          <p>This is a premium feature. Upgrade your plan to access it.</p>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClose}>Cancel</Button>
+          <Button onClick={handleUpgrade} variant="contained" color="primary">
+            View Plans
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 }

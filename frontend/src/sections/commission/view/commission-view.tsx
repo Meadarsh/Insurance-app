@@ -20,8 +20,6 @@ import { DashboardContent } from 'src/layouts/dashboard';
 import UploadMasterFileDialog from '../components/UploadMasterFileDialog';
 import PolicyDataTable from '../components/PolicyDataTable';
 import UploadVendorFileDialog from '../components/UploadVendorFileDialog';
-import CommissionTable from '../components/CommissionTable';
-import ReconciliationSummary from '../components/ReconciliationSummary';
 import MasterDataTable from '../components/MasterDataTable';
 import UploadPolicyFileDialog from '../components/UploadPolicyFileDialog';
 import PremiumGuard from 'src/components/PremiumGuard';
@@ -182,7 +180,9 @@ export default function CommissionView() {
           >
             {isUploading ? 'Uploading...' : 'Upload File (Policy)'}
           </Button>
-          </PremiumGuard>          
+          </PremiumGuard>  
+          <PremiumGuard>
+        
           <Button
             variant="outlined"
             startIcon={<Description />}
@@ -191,6 +191,7 @@ export default function CommissionView() {
           >
             Download Master/Policy Format
           </Button>
+          </PremiumGuard>
           
           {/* <Button
             variant="contained"
