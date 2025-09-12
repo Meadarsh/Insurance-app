@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -8,18 +7,22 @@ import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import EmailIcon from '@mui/icons-material/Email';
 import { DashboardContent } from 'src/layouts/dashboard';
 import { analyticsAPI } from 'src/services/analytics';
 import { AnalyticsWidgetSummary } from '../analytics-widget-summary';
-import { Autocomplete, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, Snackbar, TextField } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
+import { Autocomplete, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Drawer, IconButton, List, ListItem, ListItemIcon, ListItemText, Snackbar, TextField, Tooltip } from '@mui/material';
 import { CompanyApi } from 'src/services/company';
 import UploadPolicyFileDialog from 'src/sections/commission/components/UploadPolicyFileDialog';
-import { CloudUpload } from '@mui/icons-material';
+import { CloudUpload, Download, Send } from '@mui/icons-material';
 import UploadMasterFileDialog from 'src/sections/commission/components/UploadMasterFileDialog';
 import DashboardFilter from 'src/components/dashboard-filter';
 import type { Company } from 'src/types/company';
 import { useFilter } from 'src/contexts/FilterContext';
+import { useAuth } from 'src/contexts/AuthContext';
+import { downloadAnalyticsPDF, openAnalyticsPDFInNewTab, generateAnalyticsPDF } from 'src/utils/pdfUtils';
+import ApiInstance from 'src/services/api.instance';
+
 
 
 // ----------------------------------------------------------------------
@@ -31,7 +34,6 @@ export function OverviewAnalyticsView() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
-  const [isNavigating, setIsNavigating] = useState(false);
   
   // Get company IDs from URL or use empty array
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
@@ -39,6 +41,11 @@ export function OverviewAnalyticsView() {
   const [isUploading, setIsUploading] = useState(false);
   const [policyFileDialogOpen, setPolicyFileDialogOpen] = useState(false);
   const [masterFileDialogOpen, setMasterFileDialogOpen] = useState(false);
+  const [emailDrawerOpen, setEmailDrawerOpen] = useState(false);
+  const [email, setEmail] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const { user } = useAuth();
 
     const {
       year,
@@ -84,7 +91,6 @@ export function OverviewAnalyticsView() {
     if (refreshing) return; // Prevent multiple simultaneous refreshes
     
     try {
-      // Clear cache to force fresh data
       analyticsAPI.clearCache();
       
       await fetchAnalyticsData(true);
@@ -135,7 +141,6 @@ export function OverviewAnalyticsView() {
     await fetchAnalyticsData(true,selectedCompanyIds)
       };
 
-  // Show loading only on initial load
   if (loading && !analyticsData) {
     return (
       <DashboardContent maxWidth="xl">
@@ -149,44 +154,146 @@ export function OverviewAnalyticsView() {
     );
   }
 
+  const handleSendEmail = async () => {
+    if (!email) {
+      setEmailError('Email is required');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailError('Please enter a valid email address');
+      return;
+    }
+
+    try {
+      setEmailSending(true);
+      setEmailError('');
+      
+      const pdfBlob = await generatePDFBlob();
+      
+      if (!pdfBlob) {
+        throw new Error('Failed to generate PDF');
+      }
+      
+      const formData = new FormData();
+      formData.append('pdf', pdfBlob, `insurance-report-${new Date().toISOString().split('T')[0]}.pdf`);
+      formData.append('email', email);
+
+      const response = await ApiInstance.post('/email/send', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (response.data.status === 'success') {
+        setSuccessMessage('Report has been sent to your email successfully!');
+        setShowSuccessMessage(true);
+        setEmailDrawerOpen(false);
+        setEmail('');
+        if (response.data.previewUrl) {
+          console.log('Email preview URL:', response.data.previewUrl);
+        }
+      } else {
+        throw new Error(response.data.message || 'Failed to send email');
+      }
+    } catch (errorrrrr: any) {
+      console.error('Failed to send email:', errorrrrr);
+      const errorMessage = errorrrrr.response?.data?.message || 
+                         errorrrrr.message || 
+                         'Failed to send email. Please try again.';
+      setError(errorMessage);
+    } finally {
+      setEmailSending(false);
+    }
+  };
+
+  const generatePDFBlob = async () => {
+    if (!analyticsData) return null;
+    
+    const doc = generateAnalyticsPDF(analyticsData);
+    
+    return doc.output('blob');
+  };
+  
+  const handleDownloadPDF = async () => {
+    if (!analyticsData) return;
+    
+    try {
+      setLoading(true);
+      downloadAnalyticsPDF(analyticsData, `analytics-report-${new Date().toISOString().split('T')[0]}.pdf`);
+      setSuccess('Report downloaded successfully!');
+    } catch (err) {
+      console.error('Failed to download PDF:', err);
+      setError('Failed to download report. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <>
-     <Snackbar
-              open={showSuccessMessage}
-              autoHideDuration={6000}
-              onClose={() => setShowSuccessMessage(false)}
-              anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-            >
-              <Alert 
-                onClose={() => setShowSuccessMessage(false)} 
-                severity="success" 
-                sx={{ width: '100%' }}
-              >
-                {successMessage}
-              </Alert>
-            </Snackbar>
+      <Snackbar
+        open={showSuccessMessage}
+        autoHideDuration={6000}
+        onClose={() => setShowSuccessMessage(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        sx={{ mt: 6 }}
+      >
+        <Alert 
+          onClose={() => setShowSuccessMessage(false)} 
+          severity="success" 
+          sx={{ 
+            width: '100%',
+            '& .MuiAlert-message': {
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1
+            }
+          }}
+        >
+          <CheckCircleIcon fontSize="inherit" />
+          {successMessage}
+        </Alert>
+      </Snackbar>
       <DashboardContent maxWidth="xl">
       {/* Header with status indicator */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={{ xs: 3, md: 5 }}>
-        <Box>
-        <Typography variant="h4">
-          Hi, Welcome back 👋
-        </Typography>
-       <DashboardFilter handleApplyFilters={()=> fetchAnalyticsData(true,selectedCompanyIds)}/>
-        </Box>
-        <Box display="flex" gap={2} alignItems="center">
-          {error && (
-            <Alert severity="info" sx={{ maxWidth: 300 }}>
-              Using fallback data
-            </Alert>
-          )}
-          {success && (
-            <Alert severity="success" sx={{ maxWidth: 300 }} icon={<CheckCircleIcon />}>
-              {success}
-            </Alert>
-          )}
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={{ xs: 3, md: 5 }} gap={1}>
+        <Box sx={{ flexGrow: 1 }}>
+          <Typography variant="h4">
+            Hi, Welcome back 👋
+          </Typography>
+          <DashboardFilter handleApplyFilters={()=> fetchAnalyticsData(true,selectedCompanyIds)}/>
         </Box>
       </Box>
+        <Box display="flex" gap={2} mb={{ xs: 2, md: 3 }} alignItems="center">
+          {analyticsData?.totals && (
+            <Box display="flex" gap={1}>
+              <Tooltip title="Download PDF Report">
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  startIcon={<Download />}
+                  onClick={handleDownloadPDF}
+                  disabled={loading}
+                  sx={{ whiteSpace: 'nowrap' }}
+                >
+                  PDF
+                </Button>
+              </Tooltip>
+              <Tooltip title="Email Report">
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<EmailIcon />}
+                  onClick={() => setEmailDrawerOpen(true)}
+                  disabled={loading}
+                  sx={{ whiteSpace: 'nowrap' }}
+                >
+                  Email
+                </Button>
+              </Tooltip>
+            </Box>
+          )}
+        </Box>
 
       {/* Analytics Widgets Grid */}
       {selectedCompanyIds.length>0 && analyticsData && <Grid container spacing={3}>
@@ -309,12 +416,61 @@ export function OverviewAnalyticsView() {
             onOpenChange={setPolicyFileDialogOpen}
             onFileUploaded={handlePolicyFileUploaded}
           />
-           <UploadMasterFileDialog
-                  open={masterFileDialogOpen}
-                  onOpenChange={setMasterFileDialogOpen}
-                  onFileUploaded={handleMasterFileUploaded}
-                />
+      <UploadMasterFileDialog
+        open={masterFileDialogOpen}
+        onOpenChange={setMasterFileDialogOpen}
+        onFileUploaded={handleMasterFileUploaded}
+      />
 
+      {/* Email Report Drawer */}
+      <Drawer
+        anchor="right"
+        open={emailDrawerOpen}
+        onClose={() => setEmailDrawerOpen(false)}
+      >
+        <Box sx={{ width: 400, p: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Email Analytics Report
+          </Typography>
+          <Typography variant="body2" color="text.secondary" paragraph>
+            Enter the email address where you&apos;d like to send the analytics report.
+          </Typography>
+          
+          <TextField
+            fullWidth
+            label="Email Address"
+            variant="outlined"
+            margin="normal"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (emailError) setEmailError('');
+            }}
+            error={!!emailError}
+            helperText={emailError}
+            placeholder="recipient@example.com"
+          />
+          
+          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+            <Button 
+              onClick={() => setEmailDrawerOpen(false)}
+              disabled={emailSending}
+              variant="outlined"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleSendEmail}
+              disabled={emailSending || !email}
+              startIcon={emailSending ? <CircularProgress size={20} /> : <Send />}
+            >
+              {emailSending ? 'Sending...' : 'Send Report'}
+            </Button>
+          </Box>
+        </Box>
+      </Drawer>
     </>
   );
 }

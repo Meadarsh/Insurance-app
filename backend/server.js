@@ -17,6 +17,7 @@ import analyticsRoutes from "./src/routes/analytics.js";
 import userRoutes from "./src/routes/user.routes.js";
 import companyRoutes from "./src/routes/company.route.js";
 import paymentRoutes from "./src/routes/payment.routes.js";
+import emailRoutes from "./src/routes/email.routes.js";
 
 // Create uploads directory if it doesn't exist
 const __filename = fileURLToPath(import.meta.url);
@@ -52,9 +53,12 @@ const corsOptions = {
 
 // Middleware
 app.use(cors(corsOptions));
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(morgan("dev"));
+
+// For parsing multipart/form-data (file uploads)
+// Note: We're not using express.json() for multipart/form-data as it's handled by multer
 
 // API Routes
 app.use("/api/vendors", vendorRoutes);
@@ -66,6 +70,7 @@ app.use("/api/analytics", analyticsRoutes); // updated alrdy
 app.use("/api/users", userRoutes);
 app.use("/api/companies", companyRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/email", emailRoutes);
 
 // Serve uploaded files
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
